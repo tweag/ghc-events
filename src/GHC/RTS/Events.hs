@@ -26,13 +26,6 @@ module GHC.RTS.Events (
        BlockSize,
        Capset,
        StringId,
-       -- some types for the parallel RTS
-       ProcessId,
-       MachineId,
-       PortId,
-       MessageSize,
-       MessageTag(..),
-       PerfEventTypeNum,
 
        -- * Reading and writing event logs
        readEventLogFromFile,

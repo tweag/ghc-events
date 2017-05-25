@@ -18,7 +18,6 @@ type BlockSize = Word32
 type RawThreadStopStatus = Word16
 type StringId = Word32
 type Capset   = Word32
-type PerfEventTypeNum = Word32
 type TaskId = Word64
 type PID = Word32
 
@@ -27,13 +26,6 @@ newtype KernelThreadId = KernelThreadId { kernelThreadId :: Word64 }
 instance Binary KernelThreadId where
   put (KernelThreadId tid) = put tid
   get = fmap KernelThreadId get
-
--- Types for Parallel-RTS Extension
-type ProcessId = Word32
-type MachineId = Word16
-type PortId = ThreadId
-type MessageSize = Word32
-type RawMsgTag = Word8
 
 sz_event_type_num :: EventTypeSize
 sz_event_type_num = 2
@@ -65,24 +57,6 @@ sz_th_stop_status :: EventTypeSize
 sz_th_stop_status = 2
 sz_string_id :: EventTypeSize
 sz_string_id = 4
-
--- Sizes for Parallel-RTS event fields
-sz_procid, sz_mid, sz_mes, sz_realtime, sz_msgtag :: EventTypeSize
-sz_procid  = 4
-sz_mid  = 2
-sz_mes  = 4
-sz_realtime = 8
-sz_msgtag  = 1
-
--- Sizes for Mercury event fields.
-sz_par_conj_dyn_id :: EventTypeSize
-sz_par_conj_dyn_id = 8
-sz_par_conj_static_id :: EventTypeSize
-sz_par_conj_static_id = sz_string_id
-sz_spark_id :: EventTypeSize
-sz_spark_id = 4
-sz_future_id :: EventTypeSize
-sz_future_id = 8
 
 {-
  - Data type delcarations to build the GHC RTS data format,
@@ -391,26 +365,6 @@ data CapEvent
                -- might be shared, in which case we could end up
                -- increasing the space usage.
              } deriving Show
-
---sync with ghc/parallel/PEOpCodes.h
-data MessageTag
-  = Ready | NewPE | PETIDS | Finish
-  | FailPE | RFork | Connect | DataMes
-  | Head | Constr | Part | Terminate
-  | Packet
-  -- with GUM and its variants, add:
-  -- ...| Fetch | Resume | Ack
-  -- ...| Fish | Schedule | Free | Reval | Shark
-  deriving (Enum, Show)
-offset :: RawMsgTag
-offset = 0x50
-
--- decoder and encoder
-toMsgTag :: RawMsgTag -> MessageTag
-toMsgTag = toEnum . fromIntegral . (\n -> n - offset)
-
-fromMsgTag :: MessageTag -> RawMsgTag
-fromMsgTag = (+ offset) . fromIntegral . fromEnum
 
 -- Checks if the capability is not -1 (which indicates a global eventblock), so
 -- has no associated capability
