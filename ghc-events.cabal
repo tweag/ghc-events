@@ -54,10 +54,6 @@ library
   exposed-modules:  GHC.RTS.Events,
                     GHC.RTS.Events.Incremental
                     GHC.RTS.Events.Merge
-                    GHC.RTS.Events.Analysis
-                    GHC.RTS.Events.Analysis.Capability
-                    GHC.RTS.Events.Analysis.SparkThread
-                    GHC.RTS.Events.Analysis.Thread
   other-modules:    GHC.RTS.EventParserUtils,
                     GHC.RTS.EventTypes
                     GHC.RTS.Events.Binary
@@ -66,11 +62,6 @@ library
   extensions:	    RecordWildCards, NamedFieldPuns, BangPatterns, PatternGuards
   other-extensions: FlexibleContexts, CPP
   ghc-options:      -Wall
-
-executable ghc-events
-  main-is:          GhcEvents.hs
-  build-depends:    ghc-events, base, containers
-  extensions:	    RecordWildCards, NamedFieldPuns, BangPatterns, PatternGuards
 
 test-suite test-versions
   type:             exitcode-stdio-1.0
