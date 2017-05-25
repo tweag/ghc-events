@@ -32,7 +32,7 @@ module GHC.RTS.Events (
        writeEventLogToFile,
 
        -- * Utilities
-       CapEvent(..), sortEvents,
+       sortEvents,
        buildEventTypeMap,
 
        -- * Printing
