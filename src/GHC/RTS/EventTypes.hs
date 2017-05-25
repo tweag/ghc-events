@@ -35,12 +35,6 @@ type PortId = ThreadId
 type MessageSize = Word32
 type RawMsgTag = Word8
 
--- These types are used by Mercury events.
-type ParConjDynId = Word64
-type ParConjStaticId = StringId
-type SparkId = Word32
-type FutureId = Word64
-
 sz_event_type_num :: EventTypeSize
 sz_event_type_num = 2
 sz_cap :: EventTypeSize
@@ -324,43 +318,6 @@ data EventInfo
   -- These events have been added for Mercury's benifit but are generally
   -- useful.
   | InternString       { str :: String, sId :: {-# UNPACK #-}!StringId }
-
-  -- Mercury specific events.
-  | MerStartParConjunction {
-        dyn_id      :: {-# UNPACK #-}!ParConjDynId,
-        static_id   :: {-# UNPACK #-}!ParConjStaticId
-    }
-  | MerEndParConjunction {
-        dyn_id      :: {-# UNPACK #-}!ParConjDynId
-    }
-  | MerEndParConjunct {
-        dyn_id      :: {-# UNPACK #-}!ParConjDynId
-    }
-  | MerCreateSpark {
-        dyn_id      :: {-# UNPACK #-}!ParConjDynId,
-        spark_id    :: {-# UNPACK #-}!SparkId
-    }
-  | MerFutureCreate {
-        future_id   :: {-# UNPACK #-}!FutureId,
-        name_id     :: {-# UNPACK #-}!StringId
-    }
-  | MerFutureWaitNosuspend {
-        future_id   :: {-# UNPACK #-}!FutureId
-    }
-  | MerFutureWaitSuspended {
-        future_id   :: {-# UNPACK #-}!FutureId
-    }
-  | MerFutureSignal {
-        future_id   :: {-# UNPACK #-}!FutureId
-    }
-  | MerLookingForGlobalThread
-  | MerWorkStealing
-  | MerLookingForLocalSpark
-  | MerReleaseThread {
-        thread_id   :: {-# UNPACK #-}!ThreadId
-    }
-  | MerCapSleeping
-  | MerCallingMain
 
   -- perf events
   | PerfName           { perfNum :: {-# UNPACK #-}!PerfEventTypeNum

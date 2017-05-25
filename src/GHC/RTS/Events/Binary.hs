@@ -6,7 +6,6 @@ module GHC.RTS.Events.Binary
   , standardParsers
   , ghc6Parsers
   , ghc7Parsers
-  , mercuryParsers
   , perfParsers
   , pre77StopParsers
   , ghc782StopParser
@@ -635,66 +634,6 @@ parRTSParsers sz_tid' = [
                                        })
  )]
 
-mercuryParsers :: [EventParser EventInfo]
-mercuryParsers = [
- (FixedSizeParser EVENT_MER_START_PAR_CONJUNCTION
-    (sz_par_conj_dyn_id + sz_par_conj_static_id)
-    (do dyn_id <- get
-        static_id <- get
-        return (MerStartParConjunction dyn_id static_id))
- ),
-
- (FixedSizeParser EVENT_MER_STOP_PAR_CONJUNCTION sz_par_conj_dyn_id
-    (do dyn_id <- get
-        return (MerEndParConjunction dyn_id))
- ),
-
- (FixedSizeParser EVENT_MER_STOP_PAR_CONJUNCT sz_par_conj_dyn_id
-    (do dyn_id <- get
-        return (MerEndParConjunct dyn_id))
- ),
-
- (FixedSizeParser EVENT_MER_CREATE_SPARK (sz_par_conj_dyn_id + sz_spark_id)
-    (do dyn_id <- get
-        spark_id <- get
-        return (MerCreateSpark dyn_id spark_id))
- ),
-
- (FixedSizeParser EVENT_MER_FUT_CREATE (sz_future_id + sz_string_id)
-    (do future_id <- get
-        name_id <- get
-        return (MerFutureCreate future_id name_id))
- ),
-
- (FixedSizeParser EVENT_MER_FUT_WAIT_NOSUSPEND (sz_future_id)
-    (do future_id <- get
-        return (MerFutureWaitNosuspend future_id))
- ),
-
- (FixedSizeParser EVENT_MER_FUT_WAIT_SUSPENDED (sz_future_id)
-    (do future_id <- get
-        return (MerFutureWaitSuspended future_id))
- ),
-
- (FixedSizeParser EVENT_MER_FUT_SIGNAL (sz_future_id)
-    (do future_id <- get
-        return (MerFutureSignal future_id))
- ),
-
- (simpleEvent EVENT_MER_LOOKING_FOR_GLOBAL_CONTEXT MerLookingForGlobalThread),
- (simpleEvent EVENT_MER_WORK_STEALING MerWorkStealing),
- (simpleEvent EVENT_MER_LOOKING_FOR_LOCAL_SPARK MerLookingForLocalSpark),
-
- (FixedSizeParser EVENT_MER_RELEASE_CONTEXT sz_tid
-    (do thread_id <- get
-        return (MerReleaseThread thread_id))
- ),
-
- (simpleEvent EVENT_MER_ENGINE_SLEEPING MerCapSleeping),
- (simpleEvent EVENT_MER_CALLING_MAIN MerCallingMain)
-
- ]
-
 perfParsers :: [EventParser EventInfo]
 perfParsers = [
  (VariableSizeParser EVENT_PERF_NAME (do -- (perf_num, name)
@@ -832,20 +771,6 @@ eventTypeNum e = case e of
     SendMessage {} -> EVENT_SEND_MESSAGE
     ReceiveMessage {} -> EVENT_RECEIVE_MESSAGE
     SendReceiveLocalMessage {} -> EVENT_SEND_RECEIVE_LOCAL_MESSAGE
-    MerStartParConjunction {} -> EVENT_MER_START_PAR_CONJUNCTION
-    MerEndParConjunction _ -> EVENT_MER_STOP_PAR_CONJUNCTION
-    MerEndParConjunct _ -> EVENT_MER_STOP_PAR_CONJUNCT
-    MerCreateSpark {} -> EVENT_MER_CREATE_SPARK
-    MerFutureCreate {} -> EVENT_MER_FUT_CREATE
-    MerFutureWaitNosuspend _ -> EVENT_MER_FUT_WAIT_NOSUSPEND
-    MerFutureWaitSuspended _ -> EVENT_MER_FUT_WAIT_SUSPENDED
-    MerFutureSignal _ -> EVENT_MER_FUT_SIGNAL
-    MerLookingForGlobalThread -> EVENT_MER_LOOKING_FOR_GLOBAL_CONTEXT
-    MerWorkStealing -> EVENT_MER_WORK_STEALING
-    MerLookingForLocalSpark -> EVENT_MER_LOOKING_FOR_LOCAL_SPARK
-    MerReleaseThread _ -> EVENT_MER_RELEASE_CONTEXT
-    MerCapSleeping -> EVENT_MER_ENGINE_SLEEPING
-    MerCallingMain -> EVENT_MER_CALLING_MAIN
     PerfName       {} -> nEVENT_PERF_NAME
     PerfCounter    {} -> nEVENT_PERF_COUNTER
     PerfTracepoint {} -> nEVENT_PERF_TRACEPOINT
@@ -1164,43 +1089,6 @@ putEventSpec ( SendReceiveLocalMessage mesTag senderProcess senderThread
     putE senderThread
     putE receiverProcess
     putE receiverInport
-
-putEventSpec (MerStartParConjunction dyn_id static_id) = do
-    putE dyn_id
-    putE static_id
-
-putEventSpec (MerEndParConjunction dyn_id) =
-    putE dyn_id
-
-putEventSpec (MerEndParConjunct dyn_id) =
-    putE dyn_id
-
-putEventSpec (MerCreateSpark dyn_id spark_id) = do
-    putE dyn_id
-    putE spark_id
-
-putEventSpec (MerFutureCreate future_id name_id) = do
-    putE future_id
-    putE name_id
-
-putEventSpec (MerFutureWaitNosuspend future_id) =
-    putE future_id
-
-putEventSpec (MerFutureWaitSuspended future_id) =
-    putE future_id
-
-putEventSpec (MerFutureSignal future_id) =
-    putE future_id
-
-putEventSpec MerLookingForGlobalThread = return ()
-putEventSpec MerWorkStealing = return ()
-putEventSpec MerLookingForLocalSpark = return ()
-
-putEventSpec (MerReleaseThread thread_id) =
-    putE thread_id
-
-putEventSpec MerCapSleeping = return ()
-putEventSpec MerCallingMain = return ()
 
 putEventSpec PerfName{..} = do
     putE (fromIntegral (length name) + sz_perf_num :: Word16)

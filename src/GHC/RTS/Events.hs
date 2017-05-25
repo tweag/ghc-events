@@ -32,10 +32,6 @@ module GHC.RTS.Events (
        PortId,
        MessageSize,
        MessageTag(..),
-       ParConjDynId,
-       ParConjStaticId,
-       SparkId,
-       FutureId,
        PerfEventTypeNum,
 
        -- * Reading and writing event logs
@@ -379,37 +375,6 @@ buildEventInfo spec' =
             <> ", thread " <> BB.word32Dec senderThread
             <> " to process " <> BB.word32Dec receiverProcess
             <> " on inport " <> BB.word32Dec receiverInport
-        MerStartParConjunction dyn_id static_id ->
-          "Start a parallel conjunction 0x" <> BB.word64Hex dyn_id
-          <> ", static_id: " <> BB.word32Dec static_id
-        MerEndParConjunction dyn_id ->
-          "End par conjunction: 0x" <> BB.word64Hex dyn_id
-        MerEndParConjunct dyn_id ->
-          "End par conjunct: 0x" <> BB.word64Hex dyn_id
-        MerCreateSpark dyn_id spark_id ->
-          "Create spark for conjunction: 0x" <> BB.word64Hex dyn_id
-          <> " spark: 0x" <> BB.word32Hex spark_id
-        MerFutureCreate future_id name_id ->
-          "Create future 0x" <> BB.word64Hex future_id
-          <> " named " <> BB.word32Dec name_id
-        MerFutureWaitNosuspend future_id ->
-          "Wait didn't suspend for future: 0x" <> BB.word64Hex future_id
-        MerFutureWaitSuspended future_id ->
-          "Wait suspended on future: 0x" <> BB.word64Hex future_id
-        MerFutureSignal future_id ->
-          "Signaled future 0x" <> BB.word64Hex future_id
-        MerLookingForGlobalThread ->
-          "Looking for global thread to resume"
-        MerWorkStealing ->
-          "Trying to steal a spark"
-        MerLookingForLocalSpark ->
-          "Looking for a local spark to execute"
-        MerReleaseThread thread_id ->
-          "Releasing thread " <> BB.word32Dec thread_id <> " to the free pool"
-        MerCapSleeping ->
-          "Capability going to sleep"
-        MerCallingMain ->
-          "About to call the program entry point"
         PerfName{perfNum, name} ->
           "perf event " <> BB.word32Dec perfNum
           <> " named \"" <> BB.stringUtf8 name <> "\""
