@@ -181,7 +181,7 @@ standardParsers = [
 
  (FixedSizeParser EVENT_CAPSET_CREATE (sz_capset + sz_capset_type) (do -- (capset, capset_type)
       cs <- get
-      ct <- fmap mkCapsetType get
+      ct <- fmap toCapsetType get
       return CapsetCreate{capset=cs,capsetType=ct}
    )),
 
@@ -359,7 +359,7 @@ pre77StopParsers = [
       s <- get :: Get RawThreadStopStatus
       return StopThread{thread=t, status = if s > maxThreadStopStatusPre77
                                               then NoStatus
-                                              else mkStopStatus s}
+                                              else toThreadStopStatus s}
                         -- older version of the event, no block info
    )),
 
@@ -377,7 +377,7 @@ pre77StopParsers = [
                                       -- pre-7.7: 8==BlockedOnBlackhole
                                     -> BlockedOnBlackHoleOwnedBy i
                                     | otherwise
-                                    -> mkStopStatus s}
+                                    -> toThreadStopStatus s}
     ))
   ]
 
@@ -399,7 +399,7 @@ post782StopParser =
                                       -- post-7.8.2: 8==BlockedOnBlackhole
                                     -> BlockedOnBlackHoleOwnedBy i
                                     | otherwise
-                                    -> mkStopStatus s}
+                                    -> toThreadStopStatus s}
     ))
 
 -----------------------------------------------------------
@@ -526,28 +526,7 @@ putEventSpec (RunThread t) =
 -- produced by GHC-7.8.2 ([Stop status in GHC-7.8.2] in EventTypes.hs
 putEventSpec (StopThread t s) = do
     putE t
-    putE $ case s of
-            NoStatus -> 0 :: Word16
-            HeapOverflow -> 1
-            StackOverflow -> 2
-            ThreadYielding -> 3
-            ThreadBlocked -> 4
-            ThreadFinished -> 5
-            ForeignCall -> 6
-            BlockedOnMVar -> 7
-            BlockedOnMVarRead -> 20 -- since GHC-7.8.3
-            BlockedOnBlackHole -> 8
-            BlockedOnBlackHoleOwnedBy _ -> 8
-            BlockedOnRead -> 9
-            BlockedOnWrite -> 10
-            BlockedOnDelay -> 11
-            BlockedOnSTM -> 12
-            BlockedOnDoProc -> 13
-            BlockedOnCCall -> 14
-            BlockedOnCCall_NoUnblockExc -> 15
-            BlockedOnMsgThrowTo -> 16
-            ThreadMigrating -> 17
-            BlockedOnMsgGlobalise -> 18
+    putE $ fromThreadStopStatus s
     putE $ case s of
             BlockedOnBlackHoleOwnedBy i -> i
             _                           -> 0

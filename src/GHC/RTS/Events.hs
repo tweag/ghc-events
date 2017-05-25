@@ -309,6 +309,7 @@ buildEventInfo spec' =
           "Unknown event type " <> BB.word16Dec n
 
 showThreadStopStatus :: ThreadStopStatus -> String
+showThreadStopStatus NoStatus = "No stop thread status"
 showThreadStopStatus HeapOverflow   = "heap overflow"
 showThreadStopStatus StackOverflow  = "stack overflow"
 showThreadStopStatus ThreadYielding = "thread yielding"
@@ -318,19 +319,17 @@ showThreadStopStatus ForeignCall    = "making a foreign call"
 showThreadStopStatus BlockedOnMVar  = "blocked on an MVar"
 showThreadStopStatus BlockedOnMVarRead = "blocked reading an MVar"
 showThreadStopStatus BlockedOnBlackHole = "blocked on a black hole"
+showThreadStopStatus (BlockedOnBlackHoleOwnedBy target) =
+          "blocked on black hole owned by thread " ++ show target
 showThreadStopStatus BlockedOnRead = "blocked on I/O read"
 showThreadStopStatus BlockedOnWrite = "blocked on I/O write"
 showThreadStopStatus BlockedOnDelay = "blocked on threadDelay"
 showThreadStopStatus BlockedOnSTM = "blocked in STM retry"
 showThreadStopStatus BlockedOnDoProc = "blocked on asyncDoProc"
 showThreadStopStatus BlockedOnCCall = "blocked in a foreign call"
-showThreadStopStatus BlockedOnCCall_NoUnblockExc = "blocked in a foreign call"
+showThreadStopStatus BlockedOnCCall_Interruptible = "blocked in a foreign call"
 showThreadStopStatus BlockedOnMsgThrowTo = "blocked in throwTo"
 showThreadStopStatus ThreadMigrating = "thread migrating"
-showThreadStopStatus BlockedOnMsgGlobalise = "waiting for data to be globalised"
-showThreadStopStatus (BlockedOnBlackHoleOwnedBy target) =
-          "blocked on black hole owned by thread " ++ show target
-showThreadStopStatus NoStatus = "No stop thread status"
 
 ppEventLog :: EventLog -> String
 ppEventLog = BL8.unpack . BB.toLazyByteString . buildEventLog

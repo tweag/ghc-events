@@ -1,7 +1,10 @@
 module GHC.RTS.EventTypes where
-import Control.Monad
 
+import Control.Monad
 import Data.Binary
+
+#include <Rts.h>
+#include <rts/EventLogFormat.h>
 
 -- EventType.
 type EventTypeNum = Word16
@@ -231,74 +234,89 @@ data EventInfo
   | UserMarker         { markername :: String }
   deriving Show
 
---sync with ghc/includes/Constants.h
 data ThreadStopStatus
- = NoStatus
- | HeapOverflow
- | StackOverflow
- | ThreadYielding
- | ThreadBlocked
- | ThreadFinished
- | ForeignCall
- | BlockedOnMVar
- | BlockedOnMVarRead
- | BlockedOnBlackHole
- | BlockedOnRead
- | BlockedOnWrite
- | BlockedOnDelay
- | BlockedOnSTM
- | BlockedOnDoProc
- | BlockedOnCCall
- | BlockedOnCCall_NoUnblockExc
- | BlockedOnMsgThrowTo
- | ThreadMigrating
- | BlockedOnMsgGlobalise
- | BlockedOnBlackHoleOwnedBy {-# UNPACK #-}!ThreadId
- deriving (Show)
+  = NoStatus
+  | HeapOverflow
+  | StackOverflow
+  | ThreadYielding
+  | ThreadBlocked
+  | ThreadFinished
+  | ForeignCall
+  | BlockedOnMVar
+  | BlockedOnMVarRead
+  | BlockedOnBlackHole
+  | BlockedOnBlackHoleOwnedBy {-# UNPACK #-}!ThreadId
+  | BlockedOnRead
+  | BlockedOnWrite
+  | BlockedOnDelay
+  | BlockedOnSTM
+  | BlockedOnDoProc
+  | BlockedOnCCall
+  | BlockedOnCCall_Interruptible
+  | BlockedOnMsgThrowTo
+  | ThreadMigrating
+  deriving (Show)
 
-mkStopStatus :: RawThreadStopStatus -> ThreadStopStatus
-mkStopStatus n = case n of
- 0  ->  NoStatus
- 1  ->  HeapOverflow
- 2  ->  StackOverflow
- 3  ->  ThreadYielding
- 4  ->  ThreadBlocked
- 5  ->  ThreadFinished
- 6  ->  ForeignCall
- 7  ->  BlockedOnMVar
- 8  ->  BlockedOnBlackHole
- 9  ->  BlockedOnRead
- 10 ->  BlockedOnWrite
- 11 ->  BlockedOnDelay
- 12 ->  BlockedOnSTM
- 13 ->  BlockedOnDoProc
- 14 ->  BlockedOnCCall
- 15 ->  BlockedOnCCall_NoUnblockExc
- 16 ->  BlockedOnMsgThrowTo
- 17 ->  ThreadMigrating
- 18 ->  BlockedOnMsgGlobalise
- 19 ->  NoStatus -- yeuch... this one does not actually exist in GHC eventlogs
- 20 ->  BlockedOnMVarRead -- since GHC-7.8.3
- _  ->  error "mkStat"
+toThreadStopStatus :: RawThreadStopStatus -> ThreadStopStatus
+toThreadStopStatus (#const NoStatus) = NoStatus
+toThreadStopStatus (#const HeapOverflow) = HeapOverflow
+toThreadStopStatus (#const StackOverflow) = StackOverflow
+toThreadStopStatus (#const ThreadYielding) = ThreadYielding
+toThreadStopStatus (#const ThreadBlocked) = ThreadBlocked
+toThreadStopStatus (#const ThreadFinished) = ThreadFinished
+toThreadStopStatus (#const THREAD_SUSPENDED_FOREIGN_CALL) = ForeignCall
+toThreadStopStatus (#const BlockedOnMVar + 6) = BlockedOnMVar
+toThreadStopStatus (#const BlockedOnMVarRead + 6) = BlockedOnMVarRead
+toThreadStopStatus (#const BlockedOnBlackHole + 6) = BlockedOnBlackHole
+toThreadStopStatus (#const BlockedOnRead + 6) = BlockedOnRead
+toThreadStopStatus (#const BlockedOnWrite + 6) = BlockedOnWrite
+toThreadStopStatus (#const BlockedOnDelay + 6) = BlockedOnDelay
+toThreadStopStatus (#const BlockedOnSTM + 6) = BlockedOnSTM
+toThreadStopStatus (#const BlockedOnDoProc + 6) = BlockedOnDoProc
+toThreadStopStatus (#const BlockedOnCCall + 6) = BlockedOnCCall
+toThreadStopStatus (#const BlockedOnCCall_Interruptible + 6) = BlockedOnCCall_Interruptible
+toThreadStopStatus (#const BlockedOnMsgThrowTo + 6) = BlockedOnMsgThrowTo
+toThreadStopStatus (#const ThreadMigrating + 6) = ThreadMigrating
+toThreadStopStatus _ = error "ThreadStopStatus.toThreadStopStatus: bad argument"
 
-maxThreadStopStatusPre77, maxThreadStopStatus
-    :: RawThreadStopStatus
+fromThreadStopStatus :: ThreadStopStatus -> RawThreadStopStatus
+fromThreadStopStatus NoStatus = #const NoStatus
+fromThreadStopStatus HeapOverflow = #const HeapOverflow
+fromThreadStopStatus StackOverflow = #const StackOverflow
+fromThreadStopStatus ThreadYielding = #const ThreadYielding
+fromThreadStopStatus ThreadBlocked = #const ThreadBlocked
+fromThreadStopStatus ThreadFinished = #const ThreadFinished
+fromThreadStopStatus ForeignCall = #const THREAD_SUSPENDED_FOREIGN_CALL
+fromThreadStopStatus BlockedOnMVar = #const BlockedOnMVar + 6
+fromThreadStopStatus BlockedOnMVarRead = #const BlockedOnMVarRead + 6
+fromThreadStopStatus BlockedOnBlackHole = #const BlockedOnBlackHole + 6
+fromThreadStopStatus (BlockedOnBlackHoleOwnedBy _) = #const BlockedOnBlackHole + 6
+fromThreadStopStatus BlockedOnRead = #const BlockedOnRead + 6
+fromThreadStopStatus BlockedOnWrite = #const BlockedOnWrite + 6
+fromThreadStopStatus BlockedOnDelay = #const BlockedOnDelay + 6
+fromThreadStopStatus BlockedOnSTM = #const BlockedOnSTM + 6
+fromThreadStopStatus BlockedOnDoProc = #const BlockedOnDoProc + 6
+fromThreadStopStatus BlockedOnCCall = #const BlockedOnCCall + 6
+fromThreadStopStatus BlockedOnCCall_Interruptible = #const BlockedOnCCall_Interruptible + 6
+fromThreadStopStatus BlockedOnMsgThrowTo = #const BlockedOnMsgThrowTo + 6
+fromThreadStopStatus ThreadMigrating = #const ThreadMigrating + 6
+
+maxThreadStopStatusPre77, maxThreadStopStatus :: Word16
 maxThreadStopStatusPre77  = 18 -- see [Stop status in GHC-7.8.2]
 maxThreadStopStatus = 20
 
 data CapsetType
- = CapsetCustom
- | CapsetOsProcess
- | CapsetClockDomain
- | CapsetUnknown
+  = CapsetCustom
+  | CapsetOsProcess
+  | CapsetClockDomain
+  | CapsetUnknown
  deriving Show
 
-mkCapsetType :: Word16 -> CapsetType
-mkCapsetType n = case n of
- 1 -> CapsetCustom
- 2 -> CapsetOsProcess
- 3 -> CapsetClockDomain
- _ -> CapsetUnknown
+toCapsetType :: Word16 -> CapsetType
+toCapsetType (#const CAPSET_TYPE_CUSTOM) = CapsetCustom
+toCapsetType (#const CAPSET_TYPE_OSPROCESS) = CapsetOsProcess
+toCapsetType (#const CAPSET_TYPE_CLOCKDOMAIN) = CapsetClockDomain
+toCapsetType _ = CapsetUnknown
 
 -- | An event annotated with the Capability that generated it, if any
 {-# DEPRECATED CapEvent "CapEvents will be removed soon, now Event has a field evCap" #-}
