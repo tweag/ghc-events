@@ -35,9 +35,6 @@ sz_time :: EventTypeSize
 sz_time = 8
 sz_tid :: EventTypeSize
 sz_tid  = 4
-sz_old_tid :: EventTypeSize
-sz_old_tid  = 8 -- GHC 6.12 was using 8 for ThreadID when declaring the size
-                -- of events, but was actually using 32 bits for ThreadIDs
 sz_capset :: EventTypeSize
 sz_capset = 4
 sz_capset_type :: EventTypeSize

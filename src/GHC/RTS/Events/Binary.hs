@@ -4,7 +4,6 @@ module GHC.RTS.Events.Binary
     getHeader
   , getEvent
   , standardParsers
-  , ghc6Parsers
   , ghc7Parsers
   , pre77StopParsers
   , ghc782StopParser
@@ -423,56 +422,6 @@ post782StopParser =
                                     | otherwise
                                     -> mkStopStatus s}
     ))
-
- -----------------------
- -- GHC 6.12 compat: GHC 6.12 reported the wrong sizes for some events,
- -- so we have to recognise those wrong sizes here for backwards
- -- compatibility.
-ghc6Parsers :: [EventParser EventInfo]
-ghc6Parsers = [
- (FixedSizeParser EVENT_CREATE_THREAD sz_old_tid (do  -- (thread)
-      t <- get
-      return CreateThread{thread=t}
-   )),
-
- (FixedSizeParser EVENT_RUN_THREAD sz_old_tid (do  --  (thread)
-      t <- get
-      return RunThread{thread=t}
-   )),
-
- (FixedSizeParser EVENT_STOP_THREAD (sz_old_tid + 2) (do  -- (thread, status)
-      t <- get
-      s <- get :: Get RawThreadStopStatus
-      return StopThread{thread=t, status = if s > maxThreadStopStatusPre77
-                                              then NoStatus
-                                              else mkStopStatus s}
-                        -- older version of the event uses pre-77 encoding
-                        -- (actually, it only uses encodings 0 to 5)
-                        -- see [Stop status in GHC-7.8.2] in EventTypes.hs
-   )),
-
- (FixedSizeParser EVENT_THREAD_RUNNABLE sz_old_tid (do  -- (thread)
-      t <- get
-      return ThreadRunnable{thread=t}
-   )),
-
- (FixedSizeParser EVENT_MIGRATE_THREAD (sz_old_tid + sz_cap) (do  --  (thread, newCap)
-      t  <- get
-      nc <- get :: Get CapNo
-      return MigrateThread{thread=t,newCap=fromIntegral nc}
-   )),
-
- (FixedSizeParser EVENT_CREATE_SPARK_THREAD sz_old_tid (do  -- (sparkThread)
-      st <- get :: Get ThreadId
-      return CreateSparkThread{sparkThread=st}
-   )),
-
- (FixedSizeParser EVENT_THREAD_WAKEUP (sz_old_tid + sz_cap) (do  -- (thread, other_cap)
-      t <- get
-      oc <- get :: Get CapNo
-      return WakeupThread{thread=t,otherCap=fromIntegral oc}
-   ))
- ]
 
 -----------------------------------------------------------
 
