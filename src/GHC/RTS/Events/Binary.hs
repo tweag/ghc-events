@@ -6,22 +6,14 @@ module GHC.RTS.Events.Binary
   , standardParsers
   , ghc6Parsers
   , ghc7Parsers
-  , perfParsers
   , pre77StopParsers
   , ghc782StopParser
   , post782StopParser
-  , parRTSParsers
 
   -- * Writers
   , putEventLog
   , putHeader
   , putEvent
-
-  -- * Perf events
-  , nEVENT_PERF_NAME
-  , nEVENT_PERF_COUNTER
-  , nEVENT_PERF_TRACEPOINT
-
   ) where
 import Control.Monad
 import Data.Maybe
@@ -36,7 +28,7 @@ import GHC.RTS.EventTypes
 import GHC.RTS.EventParserUtils
 
 #define EVENTLOG_CONSTANTS_ONLY
-#include "EventLogFormat.h"
+#include <rts/EventLogFormat.h>
 
 getEventType :: Get EventType
 getEventType = do
@@ -100,11 +92,6 @@ getEvent (EventParsers parsers) = do
 --
 standardParsers :: [EventParser EventInfo]
 standardParsers = [
- (FixedSizeParser EVENT_STARTUP sz_cap (do -- (n_caps)
-      c <- get :: Get CapNo
-      return Startup{ n_caps = fromIntegral c }
-   )),
-
  (FixedSizeParser EVENT_BLOCK_MARKER (sz_block_size + sz_time + sz_cap) (do -- (size, end_time, cap)
       block_size <- get :: Get BlockSize
       end_time <- get :: Get Timestamp
@@ -115,10 +102,6 @@ standardParsers = [
                                         (fromIntegral sz_block_event))
                         }
    )),
-
- -- EVENT_SHUTDOWN is replaced by EVENT_CAP_DELETE and GHC 7.6+
- -- no longer generate the event; should be removed at some point
- (simpleEvent EVENT_SHUTDOWN Shutdown),
 
  (simpleEvent EVENT_REQUEST_SEQ_GC RequestSeqGC),
 
@@ -277,13 +260,6 @@ standardParsers = [
                           , rtsident = string }
    )),
 
- (VariableSizeParser EVENT_INTERN_STRING (do -- (str, id)
-      num <- get :: Get Word16
-      string <- getString (num - sz_string_id)
-      sId <- get :: Get StringId
-      return (InternString string sId)
-    )),
-
  (VariableSizeParser EVENT_THREAD_LABEL (do -- (thread, str)
       num <- get :: Get Word16
       tid <- get
@@ -315,20 +291,6 @@ ghc7Parsers = [
       t  <- get
       nc <- get :: Get CapNo
       return MigrateThread{thread=t,newCap=fromIntegral nc}
-   )),
-
- -- Yes, EVENT_RUN/STEAL_SPARK are deprecated, but see the explanation in the
- -- 'ghc6Parsers' section below. Since we're parsing them anyway, we might
- -- as well convert them to the new SparkRun/SparkSteal events.
- (FixedSizeParser EVENT_RUN_SPARK sz_tid (do  -- (thread)
-      _ <- get :: Get ThreadId
-      return SparkRun
-   )),
-
- (FixedSizeParser EVENT_STEAL_SPARK (sz_tid + sz_cap) (do  -- (thread, victimCap)
-      _  <- get :: Get ThreadId
-      vc <- get :: Get CapNo
-      return SparkSteal{victimCap=fromIntegral vc}
    )),
 
  (FixedSizeParser EVENT_CREATE_SPARK_THREAD sz_tid (do  -- (sparkThread)
@@ -468,13 +430,6 @@ post782StopParser =
  -- compatibility.
 ghc6Parsers :: [EventParser EventInfo]
 ghc6Parsers = [
- (FixedSizeParser EVENT_STARTUP 0 (do
-      -- BUG in GHC 6.12: the startup event was incorrectly
-      -- declared as size 0, so we accept it here.
-      c <- get :: Get CapNo
-      return Startup{ n_caps = fromIntegral c }
-   )),
-
  (FixedSizeParser EVENT_CREATE_THREAD sz_old_tid (do  -- (thread)
       t <- get
       return CreateThread{thread=t}
@@ -507,24 +462,6 @@ ghc6Parsers = [
       return MigrateThread{thread=t,newCap=fromIntegral nc}
    )),
 
- -- Note: it is vital that these two (EVENT_RUN/STEAL_SPARK) remain here (at
- -- least in the ghc6Parsers section) even though both events are deprecated.
- -- The reason is that .eventlog files created by the buggy GHC-6.12
- -- mis-declare the size of these two events. So we have to handle them
- -- specially here otherwise we'll get the wrong size, leading to us getting
- -- out of sync and eventual parse failure. Since we're parsing them anyway,
- -- we might as well convert them to the new SparkRun/SparkSteal events.
- (FixedSizeParser EVENT_RUN_SPARK sz_old_tid (do  -- (thread)
-      _ <- get :: Get ThreadId
-      return SparkRun
-   )),
-
- (FixedSizeParser EVENT_STEAL_SPARK (sz_old_tid + sz_cap) (do  -- (thread, victimCap)
-      _  <- get :: Get ThreadId
-      vc <- get :: Get CapNo
-      return SparkSteal{victimCap=fromIntegral vc}
-   )),
-
  (FixedSizeParser EVENT_CREATE_SPARK_THREAD sz_old_tid (do  -- (sparkThread)
       st <- get :: Get ThreadId
       return CreateSparkThread{sparkThread=st}
@@ -535,126 +472,6 @@ ghc6Parsers = [
       oc <- get :: Get CapNo
       return WakeupThread{thread=t,otherCap=fromIntegral oc}
    ))
- ]
-
--- Parsers for parallel events. Parameter is the thread_id size, to create
--- ghc6-parsers (using the wrong size) where necessary.
-parRTSParsers :: EventTypeSize -> [EventParser EventInfo]
-parRTSParsers sz_tid' = [
- (VariableSizeParser EVENT_VERSION (do -- (version)
-      num <- get :: Get Word16
-      string <- getString num
-      return Version{ version = string }
-   )),
-
- (VariableSizeParser EVENT_PROGRAM_INVOCATION (do -- (cmd. line)
-      num <- get :: Get Word16
-      string <- getString num
-      return ProgramInvocation{ commandline = string }
-   )),
-
- (simpleEvent EVENT_EDEN_START_RECEIVE EdenStartReceive),
- (simpleEvent EVENT_EDEN_END_RECEIVE   EdenEndReceive),
-
- (FixedSizeParser EVENT_CREATE_PROCESS sz_procid
-    (do p <- get
-        return CreateProcess{ process = p })
- ),
-
- (FixedSizeParser EVENT_KILL_PROCESS sz_procid
-    (do p <- get
-        return KillProcess{ process = p })
- ),
-
- (FixedSizeParser EVENT_ASSIGN_THREAD_TO_PROCESS (sz_tid' + sz_procid)
-    (do t <- get
-        p <- get
-        return AssignThreadToProcess { thread = t, process = p })
- ),
-
- (FixedSizeParser EVENT_CREATE_MACHINE (sz_mid + sz_realtime)
-    (do m <- get
-        t <- get
-        return CreateMachine { machine = m, realtime = t })
- ),
-
- (FixedSizeParser EVENT_KILL_MACHINE sz_mid
-    (do m <- get :: Get MachineId
-        return KillMachine { machine = m })
- ),
-
- (FixedSizeParser EVENT_SEND_MESSAGE
-    (sz_msgtag + 2*sz_procid + 2*sz_tid' + sz_mid)
-    (do tag <- get :: Get RawMsgTag
-        sP  <- get :: Get ProcessId
-        sT  <- get :: Get ThreadId
-        rM  <- get :: Get MachineId
-        rP  <- get :: Get ProcessId
-        rIP <- get :: Get PortId
-        return SendMessage { mesTag = toMsgTag tag,
-                             senderProcess = sP,
-                             senderThread = sT,
-                             receiverMachine = rM,
-                             receiverProcess = rP,
-                             receiverInport = rIP
-                           })
- ),
-
- (FixedSizeParser EVENT_RECEIVE_MESSAGE
-    (sz_msgtag + 2*sz_procid + 2*sz_tid' + sz_mid + sz_mes)
-    (do tag <- get :: Get Word8
-        rP  <- get :: Get ProcessId
-        rIP <- get :: Get PortId
-        sM  <- get :: Get MachineId
-        sP  <- get :: Get ProcessId
-        sT  <- get :: Get ThreadId
-        mS  <- get :: Get MessageSize
-        return  ReceiveMessage { mesTag = toMsgTag tag,
-                                 receiverProcess = rP,
-                                 receiverInport = rIP,
-                                 senderMachine = sM,
-                                 senderProcess = sP,
-                                 senderThread= sT,
-                                 messageSize = mS
-                               })
- ),
-
- (FixedSizeParser EVENT_SEND_RECEIVE_LOCAL_MESSAGE
-    (sz_msgtag + 2*sz_procid + 2*sz_tid')
-    (do tag <- get :: Get Word8
-        sP  <- get :: Get ProcessId
-        sT  <- get :: Get ThreadId
-        rP  <- get :: Get ProcessId
-        rIP <- get :: Get PortId
-        return SendReceiveLocalMessage { mesTag = toMsgTag tag,
-                                         senderProcess = sP,
-                                         senderThread = sT,
-                                         receiverProcess = rP,
-                                         receiverInport = rIP
-                                       })
- )]
-
-perfParsers :: [EventParser EventInfo]
-perfParsers = [
- (VariableSizeParser EVENT_PERF_NAME (do -- (perf_num, name)
-      num     <- get :: Get Word16
-      perfNum <- get
-      name    <- getString (num - sz_perf_num)
-      return PerfName{perfNum, name}
-   )),
-
- (FixedSizeParser EVENT_PERF_COUNTER (sz_perf_num + sz_kernel_tid + 8) (do -- (perf_num, tid, period)
-      perfNum <- get
-      tid     <- get
-      period  <- get
-      return PerfCounter{perfNum, tid, period}
-  )),
-
- (FixedSizeParser EVENT_PERF_TRACEPOINT (sz_perf_num + sz_kernel_tid) (do -- (perf_num, tid)
-      perfNum <- get
-      tid     <- get
-      return PerfTracepoint{perfNum, tid}
-  ))
  ]
 
 -----------------------------------------------------------
@@ -710,7 +527,6 @@ eventTypeNum e = case e of
     StopThread {} -> EVENT_STOP_THREAD
     ThreadRunnable {} -> EVENT_THREAD_RUNNABLE
     MigrateThread {} -> EVENT_MIGRATE_THREAD
-    Shutdown {} -> EVENT_SHUTDOWN
     WakeupThread {} -> EVENT_THREAD_WAKEUP
     ThreadLabel {}  -> EVENT_THREAD_LABEL
     StartGC {} -> EVENT_GC_START
@@ -731,7 +547,6 @@ eventTypeNum e = case e of
     TaskMigrate {} -> EVENT_TASK_MIGRATE
     TaskDelete  {} -> EVENT_TASK_DELETE
     Message {} -> EVENT_LOG_MSG
-    Startup {} -> EVENT_STARTUP
     EventBlock {} -> EVENT_BLOCK_MARKER
     UserMessage {} -> EVENT_USER_MSG
     UserMarker  {} -> EVENT_USER_MARKER
@@ -758,27 +573,6 @@ eventTypeNum e = case e of
     OsProcessParentPid{} -> EVENT_OSPROCESS_PPID
     WallClockTime{} -> EVENT_WALL_CLOCK_TIME
     UnknownEvent {} -> error "eventTypeNum UnknownEvent"
-    InternString {} -> EVENT_INTERN_STRING
-    Version {} -> EVENT_VERSION
-    ProgramInvocation {} -> EVENT_PROGRAM_INVOCATION
-    EdenStartReceive {} -> EVENT_EDEN_START_RECEIVE
-    EdenEndReceive {} -> EVENT_EDEN_END_RECEIVE
-    CreateProcess {} -> EVENT_CREATE_PROCESS
-    KillProcess {} -> EVENT_KILL_PROCESS
-    AssignThreadToProcess {} -> EVENT_ASSIGN_THREAD_TO_PROCESS
-    CreateMachine {} -> EVENT_CREATE_MACHINE
-    KillMachine {} -> EVENT_KILL_MACHINE
-    SendMessage {} -> EVENT_SEND_MESSAGE
-    ReceiveMessage {} -> EVENT_RECEIVE_MESSAGE
-    SendReceiveLocalMessage {} -> EVENT_SEND_RECEIVE_LOCAL_MESSAGE
-    PerfName       {} -> nEVENT_PERF_NAME
-    PerfCounter    {} -> nEVENT_PERF_COUNTER
-    PerfTracepoint {} -> nEVENT_PERF_TRACEPOINT
-
-nEVENT_PERF_NAME, nEVENT_PERF_COUNTER, nEVENT_PERF_TRACEPOINT :: EventTypeNum
-nEVENT_PERF_NAME = EVENT_PERF_NAME
-nEVENT_PERF_COUNTER = EVENT_PERF_COUNTER
-nEVENT_PERF_TRACEPOINT = EVENT_PERF_TRACEPOINT
 
 putEvent :: Event -> PutM ()
 putEvent Event {..} = do
@@ -787,9 +581,6 @@ putEvent Event {..} = do
     putEventSpec evSpec
 
 putEventSpec :: EventInfo -> PutM ()
-putEventSpec (Startup caps) = do
-    putCap (fromIntegral caps)
-
 putEventSpec (EventBlock end cap sz) = do
     putE (fromIntegral (sz+24) :: BlockSize)
     putE end
@@ -882,9 +673,6 @@ putEventSpec (ThreadLabel t l) = do
     putE (fromIntegral (length l) + sz_tid :: Word16)
     putE t
     putEStr l
-
-putEventSpec Shutdown =
-    return ()
 
 putEventSpec RequestSeqGC =
     return ()
@@ -1027,82 +815,6 @@ putEventSpec (UserMarker s) = do
     mapM_ putE s
 
 putEventSpec (UnknownEvent {}) = error "putEventSpec UnknownEvent"
-
-putEventSpec (InternString str id) = do
-    putE len
-    mapM_ putE str
-    putE id
-  where len = (fromIntegral (length str) :: Word16) + sz_string_id
-
-putEventSpec (Version s) = do
-    putE (fromIntegral (length s) :: Word16)
-    mapM_ putE s
-
-putEventSpec (ProgramInvocation s) = do
-    putE (fromIntegral (length s) :: Word16)
-    mapM_ putE s
-
-putEventSpec ( EdenStartReceive ) = return ()
-
-putEventSpec ( EdenEndReceive ) = return ()
-
-putEventSpec ( CreateProcess  process ) = do
-    putE process
-
-putEventSpec ( KillProcess process ) = do
-    putE process
-
-putEventSpec ( AssignThreadToProcess thread process ) = do
-    putE thread
-    putE process
-
-putEventSpec ( CreateMachine machine realtime ) = do
-    putE machine
-    putE realtime
-
-putEventSpec ( KillMachine machine ) = do
-    putE machine
-
-putEventSpec ( SendMessage mesTag senderProcess senderThread
-                 receiverMachine receiverProcess receiverInport ) = do
-    putE (fromMsgTag mesTag)
-    putE senderProcess
-    putE senderThread
-    putE receiverMachine
-    putE receiverProcess
-    putE receiverInport
-
-putEventSpec ( ReceiveMessage mesTag receiverProcess receiverInport
-                 senderMachine senderProcess senderThread messageSize ) = do
-    putE (fromMsgTag mesTag)
-    putE receiverProcess
-    putE receiverInport
-    putE senderMachine
-    putE senderProcess
-    putE senderThread
-    putE messageSize
-
-putEventSpec ( SendReceiveLocalMessage mesTag senderProcess senderThread
-                 receiverProcess receiverInport ) = do
-    putE (fromMsgTag mesTag)
-    putE senderProcess
-    putE senderThread
-    putE receiverProcess
-    putE receiverInport
-
-putEventSpec PerfName{..} = do
-    putE (fromIntegral (length name) + sz_perf_num :: Word16)
-    putE perfNum
-    mapM_ putE name
-
-putEventSpec PerfCounter{..} = do
-    putE perfNum
-    putE tid
-    putE period
-
-putEventSpec PerfTracepoint{..} = do
-    putE perfNum
-    putE tid
 
 -- [] == []
 -- [x] == x\0

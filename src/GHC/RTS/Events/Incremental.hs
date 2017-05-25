@@ -29,7 +29,7 @@ import GHC.RTS.EventTypes
 import GHC.RTS.Events.Binary
 
 #define EVENTLOG_CONSTANTS_ONLY
-#include "EventLogFormat.h"
+#include <rts/EventLogFormat.h>
 
 -- | The unfolding of the decoding process.
 data Decoder a
@@ -192,13 +192,10 @@ mkEventDecoder header = G.runGetIncremental $ getEvent parsers
       | is_ghc_6 = concat
         [ standardParsers
         , ghc6Parsers
-        , parRTSParsers sz_old_tid
         ]
       | otherwise = concat
         [ standardParsers
         , ghc7Parsers
         , stopParsers
-        , parRTSParsers sz_tid
-        , perfParsers
         ]
     parsers = EventParsers $ mkEventTypeParsers imap event_parsers

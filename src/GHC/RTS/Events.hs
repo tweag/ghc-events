@@ -49,10 +49,6 @@ module GHC.RTS.Events (
        ppEventLog, ppEventType,
        ppEvent, buildEvent, buildEvent',
 
-       -- * Perf events
-       nEVENT_PERF_NAME, nEVENT_PERF_COUNTER, nEVENT_PERF_TRACEPOINT,
-       sz_perf_num, sz_kernel_tid,
-
        -- * For compatibility with old clients
        -- readEventLogFromFile, TODO
        spec,
@@ -187,8 +183,6 @@ buildEventInfo spec' =
         EventBlock end_time cap _block_events ->
           "event block: cap " <> BB.intDec cap
           <> ", end time: " <> BB.word64Dec end_time <> "\n"
-        Startup n_caps ->
-          "startup: " <> BB.intDec n_caps <> " capabilities"
         CreateThread thread ->
           "creating thread " <> BB.word32Dec thread
         RunThread thread ->
@@ -236,8 +230,6 @@ buildEventInfo spec' =
           <> " to cap " <> BB.intDec new_cap
         TaskDelete taskId ->
           "task 0x" <> BB.word64Hex taskId <> " deleted"
-        Shutdown ->
-          "shutting down"
         WakeupThread thread otherCap ->
           "waking up thread " <> BB.word32Dec thread
           <> " on cap " <> BB.intDec otherCap
@@ -327,64 +319,6 @@ buildEventInfo spec' =
           <> ": env: " <> BB.stringUtf8 (show env)
         UnknownEvent n ->
           "Unknown event type " <> BB.word16Dec n
-        InternString str sId ->
-          "Interned string: \"" <> BB.stringUtf8 str
-          <> "\" with id " <> BB.word32Dec sId
-        -- events for the parallel RTS
-        Version version ->
-          "compiler version is " <> BB.stringUtf8 version
-        ProgramInvocation  commandline ->
-          "program invocation: " <> BB.stringUtf8 commandline
-        EdenStartReceive ->
-          "starting to receive"
-        EdenEndReceive ->
-          "stop receiving"
-        CreateProcess  process ->
-          "creating process " <> BB.word32Dec process
-        KillProcess process ->
-          "killing process " <> BB.word32Dec process
-        AssignThreadToProcess thread process ->
-          "assigning thread " <> BB.word32Dec thread
-          <> " to process " <> BB.word32Dec process
-        CreateMachine machine realtime ->
-          "creating machine " <> BB.word16Dec machine
-          <> " at " <> BB.word64Dec realtime
-        KillMachine machine ->
-          "killing machine " <> BB.word16Dec machine
-        SendMessage mesTag senderProcess senderThread
-          receiverMachine receiverProcess receiverInport ->
-            "sending message with tag " <> BB.stringUtf8 (show mesTag)
-            <> " from process " <> BB.word32Dec senderProcess
-            <> ", thread " <> BB.word32Dec senderThread
-            <> " to machine " <> BB.word16Dec receiverMachine
-            <> ", process " <> BB.word32Dec receiverProcess
-            <> " on inport " <> BB.word32Dec receiverInport
-        ReceiveMessage mesTag receiverProcess receiverInport
-          senderMachine senderProcess senderThread messageSize ->
-            "receiving message with tag " <> BB.stringUtf8 (show mesTag)
-            <> " at process " <> BB.word32Dec receiverProcess
-            <> ", inport " <> BB.word32Dec receiverInport
-            <> " from machine " <> BB.word16Dec senderMachine
-            <> ", process " <> BB.word32Dec senderProcess
-            <> ", thread " <> BB.word32Dec senderThread
-            <> " with size " <> BB.word32Dec messageSize
-        SendReceiveLocalMessage mesTag senderProcess senderThread
-          receiverProcess receiverInport ->
-            "sending/receiving message with tag " <> BB.stringUtf8 (show mesTag)
-            <> " from process " <> BB.word32Dec senderProcess
-            <> ", thread " <> BB.word32Dec senderThread
-            <> " to process " <> BB.word32Dec receiverProcess
-            <> " on inport " <> BB.word32Dec receiverInport
-        PerfName{perfNum, name} ->
-          "perf event " <> BB.word32Dec perfNum
-          <> " named \"" <> BB.stringUtf8 name <> "\""
-        PerfCounter{perfNum, tid, period} ->
-          "perf event counter " <> BB.word32Dec perfNum
-          <> " incremented by " <> BB.word64Dec (period + 1)
-          <> " in OS thread " <> BB.word64Dec (kernelThreadId tid)
-        PerfTracepoint{perfNum, tid} ->
-          "perf event tracepoint " <> BB.word32Dec perfNum
-          <> " reached in OS thread " <> BB.word64Dec (kernelThreadId tid)
 
 showThreadStopStatus :: ThreadStopStatus -> String
 showThreadStopStatus HeapOverflow   = "heap overflow"

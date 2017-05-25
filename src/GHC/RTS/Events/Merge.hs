@@ -44,7 +44,7 @@ mergeOn f (x:xs) (y:ys) | f x <= f y = x : mergeOn f xs (y:ys)
 
 -- TODO: rename, since these are not maximal values, but numbers of used values
 data MaxVars = MaxVars { mcapset :: !Word32
-                       , mcap :: !Int
+                       , _mcap :: !Int
                        , mthread :: !ThreadId }
 -- TODO introduce parallel RTS process and machine var.s
 
@@ -64,8 +64,6 @@ instance Monoid MaxVars where
 maxVars :: [Event] -> MaxVars
 maxVars = mconcat . map (maxSpec . evSpec)
  where
-    -- only checking binding sites right now, sufficient?
-    maxSpec (Startup n) = mempty { mcap = n }
     -- Threads start at 1.
     maxSpec (CreateThread t) = mempty { mthread = t }
     maxSpec (CreateSparkThread t) = mempty { mthread = t }

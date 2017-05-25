@@ -23,8 +23,7 @@ build-type:       Simple
 tested-with:      GHC == 7.6.1, GHC == 7.6.3, GHC == 7.8.2, GHC == 7.8.3, GHC == 7.10.1,
                   GHC == 8.0.2
 cabal-version:    >= 1.8
-extra-source-files: include/EventLogFormat.h
-                    test/queens-ghc-6.12.1.eventlog
+extra-source-files: test/queens-ghc-6.12.1.eventlog
                     test/queens-ghc-6.12.1.eventlog.reference
                     test/queens-ghc-7.0.2.eventlog
                     test/queens-ghc-7.0.2.eventlog.reference
@@ -58,7 +57,6 @@ library
                     GHC.RTS.EventTypes
                     GHC.RTS.Events.Binary
   hs-source-dirs:   src
-  include-dirs:     include
   extensions:       RecordWildCards, NamedFieldPuns, BangPatterns, PatternGuards
   other-extensions: FlexibleContexts, CPP
   ghc-options:      -Wall
