@@ -41,11 +41,6 @@ module GHC.RTS.Events (
        showThreadStopStatus,
        ppEventLog, ppEventType,
        ppEvent, buildEvent, buildEvent',
-
-       -- * For compatibility with old clients
-       -- readEventLogFromFile, TODO
-       spec,
-       time,
   ) where
 
 {- Libraries. -}

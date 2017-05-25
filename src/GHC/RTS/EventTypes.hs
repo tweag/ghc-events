@@ -90,14 +90,6 @@ data Event =
     evCap :: Maybe Int
   } deriving Show
 
-{-# DEPRECATED time "The field is now called evTime" #-}
-time :: Event -> Timestamp
-time = evTime
-
-{-# DEPRECATED spec "The field is now called evSpec" #-}
-spec :: Event -> EventInfo
-spec = evSpec
-
 data EventInfo
 
   -- pseudo events
