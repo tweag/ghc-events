@@ -239,24 +239,6 @@ data EventInfo
   | UserMarker         { markername :: String }
   deriving Show
 
-{- [Note: Stop status in GHC-7.8.2]
-
-In GHC-7.7, a new thread block reason "BlockedOnMVarRead" was
-introduced, and placed adjacent to BlockedOnMVar (7). Therefore, event
-logs produced by GHC pre-7.8.2 encode BlockedOnBlackHole and following
-as 8..18, whereas GHC-7.8.2 event logs encode them as 9..19.
-Later, the prior event numbering was restored for GHC-7.8.3.
-See GHC bug #9003 for a discussion.
-
-The parsers in Events.hs have to be adapted accordingly, providing
-special ghc-7.8.2 parsers for the thread-stop event if GHC-7.8.2
-produced the eventlog.
-The EVENT_USER_MARKER was not present in GHC-7.6.3, and a new event
-EVENT_HACK_BUG_T9003 was added in GHC-7.8.3, so we take presence of
-USER_MARKER and absence of HACK_BUG_T9003 as an indication that
-ghc-7.8.2 parsers should be used.
--}
-
 --sync with ghc/includes/Constants.h
 data ThreadStopStatus
  = NoStatus
@@ -267,7 +249,7 @@ data ThreadStopStatus
  | ThreadFinished
  | ForeignCall
  | BlockedOnMVar
- | BlockedOnMVarRead   -- since GHC-7.8, see [Stop status since GHC-7.7]
+ | BlockedOnMVarRead
  | BlockedOnBlackHole
  | BlockedOnRead
  | BlockedOnWrite
@@ -282,7 +264,6 @@ data ThreadStopStatus
  | BlockedOnBlackHoleOwnedBy {-# UNPACK #-}!ThreadId
  deriving (Show)
 
--- normal GHC encoding, see [Stop status in GHC-7.8.2]
 mkStopStatus :: RawThreadStopStatus -> ThreadStopStatus
 mkStopStatus n = case n of
  0  ->  NoStatus
@@ -308,35 +289,9 @@ mkStopStatus n = case n of
  20 ->  BlockedOnMVarRead -- since GHC-7.8.3
  _  ->  error "mkStat"
 
--- GHC 7.8.2 encoding, see [Stop status in GHC-7.8.2]
-mkStopStatus782 :: RawThreadStopStatus -> ThreadStopStatus
-mkStopStatus782 n = case n of
- 0  ->  NoStatus
- 1  ->  HeapOverflow
- 2  ->  StackOverflow
- 3  ->  ThreadYielding
- 4  ->  ThreadBlocked
- 5  ->  ThreadFinished
- 6  ->  ForeignCall
- 7  ->  BlockedOnMVar
- 8  ->  BlockedOnMVarRead -- in GHC-7.8.2
- 9  ->  BlockedOnBlackHole
- 10 ->  BlockedOnRead
- 11 ->  BlockedOnWrite
- 12 ->  BlockedOnDelay
- 13 ->  BlockedOnSTM
- 14 ->  BlockedOnDoProc
- 15 ->  BlockedOnCCall
- 16 ->  BlockedOnCCall_NoUnblockExc
- 17 ->  BlockedOnMsgThrowTo
- 18 ->  ThreadMigrating
- 19 ->  BlockedOnMsgGlobalise
- _  ->  error "mkStat"
-
-maxThreadStopStatusPre77, maxThreadStopStatus782, maxThreadStopStatus
+maxThreadStopStatusPre77, maxThreadStopStatus
     :: RawThreadStopStatus
 maxThreadStopStatusPre77  = 18 -- see [Stop status in GHC-7.8.2]
-maxThreadStopStatus782    = 19 -- need to distinguish three cases
 maxThreadStopStatus = 20
 
 data CapsetType

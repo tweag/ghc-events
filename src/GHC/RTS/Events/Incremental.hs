@@ -175,12 +175,9 @@ mkEventDecoder header = G.runGetIncremental $ getEvent parsers
     -- user markers with the older stop status encoding. We don't
     -- know of any such software, though.
     is_pre77 = IM.notMember EVENT_USER_MARKER imap
-    is_ghc782 = IM.member EVENT_USER_MARKER imap
-      && IM.notMember EVENT_HACK_BUG_T9003 imap
 
     stopParsers
       | is_pre77 = pre77StopParsers
-      | is_ghc782 = [ghc782StopParser]
       | otherwise = [post782StopParser]
 
     event_parsers = concat
