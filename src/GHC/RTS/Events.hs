@@ -223,7 +223,7 @@ buildEventInfo spec' =
           <> " on cap " <> BB.intDec otherCap
         ThreadLabel thread label ->
           "thread " <> builder thread
-          <> " has label \"" <> BB.stringUtf8 label <> "\""
+          <> " has label \"" <> BB.byteString label <> "\""
         RequestSeqGC ->
           "requesting sequential GC"
         RequestParGC ->
@@ -274,11 +274,11 @@ buildEventInfo spec' =
         CapEnable{cap} ->
           "enabled cap " <> BB.intDec cap
         Message msg ->
-          BB.stringUtf8 msg
+          BB.byteString msg
         UserMessage msg ->
-          BB.stringUtf8 msg
+          BB.byteString msg
         UserMarker markername ->
-          "marker: " <> BB.stringUtf8 markername
+          "marker: " <> BB.byteString markername
         CapsetCreate cs ct ->
           "created capset " <> builder cs
           <> " of type " <> BB.stringUtf8 (show ct)
@@ -298,7 +298,7 @@ buildEventInfo spec' =
           <> builder nsec <> "ns (unix epoch)"
         RtsIdentifier cs i ->
           "capset " <> builder cs
-          <> ": RTS version \"" <> BB.stringUtf8 i <> "\""
+          <> ": RTS version \"" <> BB.byteString i <> "\""
         ProgramArgs cs args ->
           "capset " <> builder cs
           <> ": args: " <> BB.stringUtf8 (show args)

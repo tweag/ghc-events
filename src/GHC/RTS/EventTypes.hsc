@@ -6,7 +6,9 @@ module GHC.RTS.EventTypes where
 
 import Control.Monad
 import Data.Binary
+import Data.ByteString (ByteString)
 import qualified Data.ByteString.Builder as BB
+import Prelude hiding (String)
 
 #include <Rts.h>
 #include <rts/EventLogFormat.h>
@@ -20,19 +22,19 @@ instance Builder Word32 where
   builder = BB.word32Dec
 instance Builder Word64 where
   builder = BB.word64Dec
-instance Builder String where
-  builder = BB.stringUtf8
+instance Builder ByteString where
+  builder = BB.byteString
 
 newtype EventTypeNum = EventTypeNum Word16
   deriving (Binary, Builder, Enum, Eq, Integral, Num, Ord, Real, Show)
 newtype EventTypeDescLen = EventTypeDescLen Word32
   deriving (Binary, Builder, Enum, Eq, Integral, Num, Ord, Real, Show)
-newtype EventTypeDesc = EventTypeDesc String
+newtype EventTypeDesc = EventTypeDesc ByteString
   deriving (Builder, Eq, Ord, Show)
 newtype EventTypeSize = EventTypeSize Word16
   deriving (Binary, Builder, Enum, Eq, Integral, Num, Ord, Real, Show)
 
-newtype EventDescription = EventDescription String
+newtype EventDescription = EventDescription ByteString
   deriving (Eq, Ord, Show)
 newtype Timestamp = Timestamp Word64
   deriving (Binary, Builder, Enum, Eq, Integral, Num, Ord, Real, Show)
@@ -146,7 +148,7 @@ data EventInfo
                          otherCap :: {-# UNPACK #-}!Int
                        }
   | ThreadLabel        { thread :: {-# UNPACK #-}!ThreadId,
-                         threadlabel :: String
+                         threadlabel :: ByteString
                        }
 
   -- par sparks
@@ -236,13 +238,13 @@ data EventInfo
 
   -- program/process info
   | RtsIdentifier      { capset :: {-# UNPACK #-}!Capset
-                       , rtsident :: String
+                       , rtsident :: ByteString
                        }
   | ProgramArgs        { capset :: {-# UNPACK #-}!Capset
-                       , args   :: [String]
+                       , args   :: [ByteString]
                        }
   | ProgramEnv         { capset :: {-# UNPACK #-}!Capset
-                       , env    :: [String]
+                       , env    :: [ByteString]
                        }
   | OsProcessPid       { capset :: {-# UNPACK #-}!Capset
                        , pid    :: {-# UNPACK #-}!PID
@@ -256,9 +258,9 @@ data EventInfo
                        }
 
   -- messages
-  | Message            { msg :: String }
-  | UserMessage        { msg :: String }
-  | UserMarker         { markername :: String }
+  | Message            { msg :: ByteString }
+  | UserMessage        { msg :: ByteString }
+  | UserMarker         { markername :: ByteString }
   deriving Show
 
 data ThreadStopStatus

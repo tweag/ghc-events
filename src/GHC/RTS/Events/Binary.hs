@@ -1,4 +1,6 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE OverloadedStrings #-}
+
 module GHC.RTS.Events.Binary
   ( -- * Readers
     getHeader
@@ -20,6 +22,8 @@ import Data.Array
 import Data.Binary
 import qualified Data.Binary.Get as G
 import Data.Binary.Put
+import qualified Data.ByteString as BS
+import Data.ByteString (ByteString)
 import Data.Maybe
 import GHC.RTS.EventParserUtils
 import GHC.RTS.EventTypes
@@ -35,16 +39,13 @@ getEventType = do
            let etSize = if size == 0xffff then Nothing else Just size
            -- 0xffff indicates variable-sized event
            etDescLen <- get :: Get EventTypeDescLen
-           etDesc <- getEtDesc (fromIntegral etDescLen)
+           etDesc <- EventTypeDesc <$> G.getByteString (fromIntegral etDescLen)
            etExtraLen <- get :: Get Word32
            G.skip (fromIntegral etExtraLen)
            ete <- get :: Get Marker
            when (ete /= EVENT_ET_END) $
               fail "Event Type end marker not found."
            return (EventType etNum etDesc etSize)
-           where
-             getEtDesc :: Int -> Get EventTypeDesc
-             getEtDesc s = EventTypeDesc <$> replicateM s (get :: Get Char)
 
 getHeader :: Get Header
 getHeader = do
@@ -241,14 +242,14 @@ standardParsers = [
       cs <- get
       string <- getString (num - sz_capset)
       return ProgramArgs{ capset = cs
-                        , args = splitNull string }
+                        , args = BS.split 0 string }
    )),
  (VariableSizeParser EVENT_PROGRAM_ENV (do -- (capset, [arg])
       num <- get :: Get EventTypeSize
       cs <- get
       string <- getString (num - sz_capset)
       return ProgramEnv{ capset = cs
-                       , env = splitNull string }
+                       , env = BS.split 0 string }
    )),
  (VariableSizeParser EVENT_RTS_IDENTIFIER (do -- (capset, str)
       num <- get :: Get EventTypeSize
@@ -416,9 +417,6 @@ putCap c = putE (fromIntegral c :: CapNo)
 putMarker :: Word32 -> PutM ()
 putMarker = putE
 
-putEStr :: String -> PutM ()
-putEStr = mapM_ putE
-
 putEventLog :: EventLog -> PutM ()
 putEventLog (EventLog hdr es) = do
     putHeader hdr
@@ -436,8 +434,8 @@ putHeader (Header ets) = do
         putMarker EVENT_ET_BEGIN
         putType n
         putE $ fromMaybe 0xffff msz
-        putE (fromIntegral $ length d :: EventTypeDescLen)
-        mapM_ put d
+        putE (fromIntegral $ BS.length d :: EventTypeDescLen)
+        putByteString d
         -- the event type header allows for extra data, which we don't use:
         putE (0 :: Word32)
         putMarker EVENT_ET_END
@@ -577,9 +575,9 @@ putEventSpec (WakeupThread t c) = do
     putCap c
 
 putEventSpec (ThreadLabel t l) = do
-    putE (fromIntegral (length l) + sz_tid :: EventTypeSize)
+    putE (fromIntegral (BS.length l) + sz_tid :: EventTypeSize)
     putE t
-    putEStr l
+    putByteString l
 
 putEventSpec RequestSeqGC =
     return ()
@@ -680,21 +678,21 @@ putEventSpec (CapsetRemoveCap cs cp) = do
     putCap cp
 
 putEventSpec (RtsIdentifier cs rts) = do
-    putE (fromIntegral (length rts) + sz_capset :: EventTypeSize)
+    putE (fromIntegral (BS.length rts) + sz_capset :: EventTypeSize)
     putE cs
-    putEStr rts
+    putByteString rts
 
 putEventSpec (ProgramArgs cs as) = do
     let as' = unsep as
-    putE (fromIntegral (length as') + sz_capset :: EventTypeSize)
+    putE (fromIntegral (BS.length as') + sz_capset :: EventTypeSize)
     putE cs
-    mapM_ putE as'
+    putByteString as'
 
 putEventSpec (ProgramEnv cs es) = do
     let es' = unsep es
-    putE (fromIntegral (length es') + sz_capset :: EventTypeSize)
+    putE (fromIntegral (BS.length es') + sz_capset :: EventTypeSize)
     putE cs
-    mapM_ putE es'
+    putByteString es'
 
 putEventSpec (OsProcessPid cs pid) = do
     putE cs
@@ -710,26 +708,21 @@ putEventSpec (WallClockTime cs sec nsec) = do
     putE nsec
 
 putEventSpec (Message s) = do
-    putE (fromIntegral (length s) :: Word16)
-    mapM_ putE s
+    putE (fromIntegral (BS.length s) :: Word16)
+    putByteString s
 
 putEventSpec (UserMessage s) = do
-    putE (fromIntegral (length s) :: Word16)
-    mapM_ putE s
+    putE (fromIntegral (BS.length s) :: Word16)
+    putByteString s
 
 putEventSpec (UserMarker s) = do
-    putE (fromIntegral (length s) :: Word16)
-    mapM_ putE s
+    putE (fromIntegral (BS.length s) :: Word16)
+    putByteString s
 
 putEventSpec (UnknownEvent {}) = error "putEventSpec UnknownEvent"
 
 -- [] == []
 -- [x] == x\0
 -- [x, y, z] == x\0y\0
-unsep :: [String] -> String
-unsep = concatMap (++"\0") -- not the most efficient, but should be ok
-
-splitNull :: String -> [String]
-splitNull [] = []
-splitNull xs = case span (/= '\0') xs of
-                (x, xs') -> x : splitNull (drop 1 xs')
+unsep :: [ByteString] -> ByteString
+unsep = BS.intercalate "\0"

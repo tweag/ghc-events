@@ -9,31 +9,24 @@ module GHC.RTS.EventParserUtils (
         simpleEvent,
     ) where
 
-import Control.Monad
 import Data.Array
 import Data.Binary
-import Data.Binary.Get ()
+import Data.Binary.Get (getByteString)
 import qualified Data.Binary.Get as G
 import Data.Binary.Put ()
-import Data.Char
+import Data.ByteString (ByteString)
 import Data.IntMap (IntMap)
 import qualified Data.IntMap as M
 import Data.List
+import GHC.RTS.EventTypes
 
 #define EVENTLOG_CONSTANTS_ONLY
 #include <rts/EventLogFormat.h>
 
-import GHC.RTS.EventTypes
-
 newtype EventParsers = EventParsers (Array Int (Get EventInfo))
 
-nBytes :: Integral a => a -> Get [Word8]
-nBytes n = replicateM (fromIntegral n) get
-
-getString :: EventTypeSize -> Get String
-getString len = do
-    bytes <- nBytes len
-    return $ map (chr . fromIntegral) bytes
+getString :: EventTypeSize -> Get ByteString
+getString len = getByteString (fromIntegral len)
 
 --
 -- Code to build the event parser table.
