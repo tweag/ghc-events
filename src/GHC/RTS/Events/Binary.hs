@@ -222,17 +222,17 @@ standardParsers = [
   )),
 
  (VariableSizeParser EVENT_LOG_MSG (do -- (msg)
-      num <- get :: Get Word16
+      num <- get :: Get EventTypeSize
       string <- getString num
       return Message{ msg = string }
    )),
  (VariableSizeParser EVENT_USER_MSG (do -- (msg)
-      num <- get :: Get Word16
+      num <- get :: Get EventTypeSize
       string <- getString num
       return UserMessage{ msg = string }
    )),
     (VariableSizeParser EVENT_USER_MARKER (do -- (markername)
-      num <- get :: Get Word16
+      num <- get :: Get EventTypeSize
       string <- getString num
       return UserMarker{ markername = string }
    )),

@@ -31,7 +31,7 @@ newtype EventParsers = EventParsers (Array Int (Get EventInfo))
 nBytes :: Integral a => a -> Get [Word8]
 nBytes n = replicateM (fromIntegral n) get
 
-getString :: Integral a => a -> Get String
+getString :: EventTypeSize -> Get String
 getString len = do
     bytes <- nBytes len
     return $ map (chr . fromIntegral) bytes
