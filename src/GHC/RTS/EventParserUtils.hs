@@ -7,7 +7,6 @@ module GHC.RTS.EventParserUtils (
         getString,
         mkEventTypeParsers,
         simpleEvent,
-        skip,
     ) where
 
 import Control.Monad
@@ -35,9 +34,6 @@ getString :: EventTypeSize -> Get String
 getString len = do
     bytes <- nBytes len
     return $ map (chr . fromIntegral) bytes
-
-skip :: Integral a => a -> Get ()
-skip n = G.skip (fromIntegral n)
 
 --
 -- Code to build the event parser table.
@@ -161,7 +157,7 @@ padParser size (FixedSizeParser t orig_size orig_p) = FixedSizeParser t size p
     where p = if (size == orig_size)
                 then orig_p
                 else do d <- orig_p
-                        skip (size - orig_size)
+                        G.skip (fromIntegral (size - orig_size))
                         return d
 
 makeParserMap :: [EventParser a] -> IntMap [EventParser a]
@@ -177,5 +173,5 @@ noEventTypeParser num mb_size = do
   bytes <- case mb_size of
              Just n  -> return n
              Nothing -> get :: Get EventTypeSize
-  skip bytes
+  G.skip (fromIntegral bytes)
   return UnknownEvent{ ref = fromIntegral num }
