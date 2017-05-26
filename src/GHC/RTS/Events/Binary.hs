@@ -13,17 +13,17 @@ module GHC.RTS.Events.Binary
   , putHeader
   , putEvent
   ) where
-import Control.Monad
-import Data.Maybe
-import Prelude hiding (gcd, rem, id)
 
+import Control.Applicative
+import Control.Monad
 import Data.Array
 import Data.Binary
-import Data.Binary.Put
 import qualified Data.Binary.Get as G
-
-import GHC.RTS.EventTypes
+import Data.Binary.Put
+import Data.Maybe
 import GHC.RTS.EventParserUtils
+import GHC.RTS.EventTypes
+import Prelude hiding (gcd, rem, id)
 
 #define EVENTLOG_CONSTANTS_ONLY
 #include <rts/EventLogFormat.h>
@@ -43,8 +43,8 @@ getEventType = do
               fail "Event Type end marker not found."
            return (EventType etNum etDesc etSize)
            where
-             getEtDesc :: Int -> Get [Char]
-             getEtDesc s = replicateM s (get :: Get Char)
+             getEtDesc :: Int -> Get EventTypeDesc
+             getEtDesc s = EventTypeDesc <$> replicateM s (get :: Get Char)
 
 getHeader :: Get Header
 getHeader = do
@@ -237,21 +237,21 @@ standardParsers = [
       return UserMarker{ markername = string }
    )),
  (VariableSizeParser EVENT_PROGRAM_ARGS (do -- (capset, [arg])
-      num <- get :: Get Word16
+      num <- get :: Get EventTypeSize
       cs <- get
       string <- getString (num - sz_capset)
       return ProgramArgs{ capset = cs
                         , args = splitNull string }
    )),
  (VariableSizeParser EVENT_PROGRAM_ENV (do -- (capset, [arg])
-      num <- get :: Get Word16
+      num <- get :: Get EventTypeSize
       cs <- get
       string <- getString (num - sz_capset)
       return ProgramEnv{ capset = cs
                        , env = splitNull string }
    )),
  (VariableSizeParser EVENT_RTS_IDENTIFIER (do -- (capset, str)
-      num <- get :: Get Word16
+      num <- get :: Get EventTypeSize
       cs <- get
       string <- getString (num - sz_capset)
       return RtsIdentifier{ capset = cs
@@ -259,7 +259,7 @@ standardParsers = [
    )),
 
  (VariableSizeParser EVENT_THREAD_LABEL (do -- (thread, str)
-      num <- get :: Get Word16
+      num <- get :: Get EventTypeSize
       tid <- get
       str <- getString (num - sz_tid)
       return ThreadLabel{ thread      = tid
@@ -432,7 +432,7 @@ putHeader (Header ets) = do
     putMarker EVENT_HET_END
     putMarker EVENT_HEADER_END
  where
-    putEventType (EventType n d msz) = do
+    putEventType (EventType n (EventTypeDesc d) msz) = do
         putMarker EVENT_ET_BEGIN
         putType n
         putE $ fromMaybe 0xffff msz
@@ -577,7 +577,7 @@ putEventSpec (WakeupThread t c) = do
     putCap c
 
 putEventSpec (ThreadLabel t l) = do
-    putE (fromIntegral (length l) + sz_tid :: Word16)
+    putE (fromIntegral (length l) + sz_tid :: EventTypeSize)
     putE t
     putEStr l
 
@@ -680,19 +680,19 @@ putEventSpec (CapsetRemoveCap cs cp) = do
     putCap cp
 
 putEventSpec (RtsIdentifier cs rts) = do
-    putE (fromIntegral (length rts) + sz_capset :: Word16)
+    putE (fromIntegral (length rts) + sz_capset :: EventTypeSize)
     putE cs
     putEStr rts
 
 putEventSpec (ProgramArgs cs as) = do
     let as' = unsep as
-    putE (fromIntegral (length as') + sz_capset :: Word16)
+    putE (fromIntegral (length as') + sz_capset :: EventTypeSize)
     putE cs
     mapM_ putE as'
 
 putEventSpec (ProgramEnv cs es) = do
     let es' = unsep es
-    putE (fromIntegral (length es') + sz_capset :: Word16)
+    putE (fromIntegral (length es') + sz_capset :: EventTypeSize)
     putE cs
     mapM_ putE es'
 

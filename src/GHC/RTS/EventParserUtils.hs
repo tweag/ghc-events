@@ -176,6 +176,6 @@ noEventTypeParser :: Int -> Maybe EventTypeSize
 noEventTypeParser num mb_size = do
   bytes <- case mb_size of
              Just n  -> return n
-             Nothing -> get :: Get Word16
+             Nothing -> get :: Get EventTypeSize
   skip bytes
   return UnknownEvent{ ref = fromIntegral num }

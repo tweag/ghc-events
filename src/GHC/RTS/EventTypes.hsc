@@ -1,34 +1,62 @@
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE TypeSynonymInstances #-}
+
 module GHC.RTS.EventTypes where
 
 import Control.Monad
 import Data.Binary
+import qualified Data.ByteString.Builder as BB
 
 #include <Rts.h>
 #include <rts/EventLogFormat.h>
 
--- EventType.
-type EventTypeNum = Word16
-type EventTypeDescLen = Word32
-type EventTypeDesc = String
-type EventTypeSize = Word16
--- Event.
-type EventDescription = String
-type Timestamp = Word64
-type ThreadId = Word32
-type CapNo = Word16
-type Marker = Word32
-type BlockSize = Word32
-type RawThreadStopStatus = Word16
-type StringId = Word32
-type Capset   = Word32
-type TaskId = Word64
-type PID = Word32
+class Builder a where
+  builder :: a -> BB.Builder
+
+instance Builder Word16 where
+  builder = BB.word16Dec
+instance Builder Word32 where
+  builder = BB.word32Dec
+instance Builder Word64 where
+  builder = BB.word64Dec
+instance Builder String where
+  builder = BB.stringUtf8
+
+newtype EventTypeNum = EventTypeNum Word16
+  deriving (Binary, Builder, Enum, Eq, Integral, Num, Ord, Real, Show)
+newtype EventTypeDescLen = EventTypeDescLen Word32
+  deriving (Binary, Builder, Enum, Eq, Integral, Num, Ord, Real, Show)
+newtype EventTypeDesc = EventTypeDesc String
+  deriving (Builder, Eq, Ord, Show)
+newtype EventTypeSize = EventTypeSize Word16
+  deriving (Binary, Builder, Enum, Eq, Integral, Num, Ord, Real, Show)
+
+newtype EventDescription = EventDescription String
+  deriving (Eq, Ord, Show)
+newtype Timestamp = Timestamp Word64
+  deriving (Binary, Builder, Enum, Eq, Integral, Num, Ord, Real, Show)
+newtype ThreadId = ThreadId Word32
+  deriving (Binary, Builder, Enum, Eq, Integral, Num, Ord, Real, Show)
+newtype CapNo = CapNo Word16
+  deriving (Binary, Builder, Enum, Eq, Integral, Num, Ord, Real, Show)
+newtype Marker = Marker Word32
+  deriving (Binary, Builder, Enum, Eq, Integral, Num, Ord, Real, Show)
+newtype BlockSize = BlockSize Word32
+  deriving (Binary, Builder, Enum, Eq, Integral, Num, Ord, Real, Show)
+newtype RawThreadStopStatus = RawThreadStopStatus Word16
+  deriving (Binary, Builder, Enum, Eq, Integral, Num, Ord, Real, Show)
+newtype StringId = StringId Word32
+  deriving (Binary, Builder, Enum, Eq, Integral, Num, Ord, Real, Show)
+newtype Capset = Capset Word32
+  deriving (Binary, Builder, Enum, Eq, Integral, Num, Ord, Real, Show)
+newtype TaskId = TaskId Word64
+  deriving (Binary, Builder, Enum, Eq, Integral, Num, Ord, Real, Show)
+newtype PID = PID Word32
+  deriving (Binary, Builder, Enum, Eq, Integral, Num, Ord, Real, Show)
 
 newtype KernelThreadId = KernelThreadId { kernelThreadId :: Word64 }
-  deriving (Eq, Ord, Show)
-instance Binary KernelThreadId where
-  put (KernelThreadId tid) = put tid
-  get = fmap KernelThreadId get
+  deriving (Binary, Builder, Eq, Ord, Show)
 
 sz_event_type_num :: EventTypeSize
 sz_event_type_num = 2
@@ -45,8 +73,7 @@ sz_capset_type = 2
 sz_block_size :: EventTypeSize
 sz_block_size = 4
 sz_block_event :: EventTypeSize
-sz_block_event = fromIntegral (sz_event_type_num + sz_time + sz_block_size
-    + sz_time + sz_cap)
+sz_block_event = sz_event_type_num + sz_time + sz_block_size + sz_time + sz_cap
 sz_pid :: EventTypeSize
 sz_pid = 4
 sz_taskid :: EventTypeSize
@@ -301,7 +328,7 @@ fromThreadStopStatus BlockedOnCCall_Interruptible = #const BlockedOnCCall_Interr
 fromThreadStopStatus BlockedOnMsgThrowTo = #const BlockedOnMsgThrowTo + 6
 fromThreadStopStatus ThreadMigrating = #const ThreadMigrating + 6
 
-maxThreadStopStatusPre77, maxThreadStopStatus :: Word16
+maxThreadStopStatusPre77, maxThreadStopStatus :: RawThreadStopStatus
 maxThreadStopStatusPre77  = 18 -- see [Stop status in GHC-7.8.2]
 maxThreadStopStatus = 20
 

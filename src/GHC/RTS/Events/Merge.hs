@@ -4,7 +4,6 @@ import GHC.RTS.Events
 import Data.Monoid
 import Data.List (foldl')
 import qualified Data.Map as M
-import Data.Word (Word32)
 import Prelude
 
 -- TODO: add a merge mode where the events are synchronized using
@@ -43,7 +42,7 @@ mergeOn f (x:xs) (y:ys) | f x <= f y = x : mergeOn f xs (y:ys)
                         | otherwise  = y : mergeOn f (x:xs) ys
 
 -- TODO: rename, since these are not maximal values, but numbers of used values
-data MaxVars = MaxVars { mcapset :: !Word32
+data MaxVars = MaxVars { mcapset :: !Capset
                        , _mcap :: !Int
                        , mthread :: !ThreadId }
 -- TODO introduce parallel RTS process and machine var.s
@@ -68,7 +67,7 @@ maxVars = mconcat . map (maxSpec . evSpec)
     maxSpec (CreateThread t) = mempty { mthread = t }
     maxSpec (CreateSparkThread t) = mempty { mthread = t }
     -- Capsets start at 0.
-    maxSpec (CapsetCreate cs _) = mempty {mcapset = cs + 1 }
+    maxSpec (CapsetCreate cs _) = mempty { mcapset = cs + 1 }
     maxSpec _  = mempty
 
 sh :: Num a => a -> a -> a

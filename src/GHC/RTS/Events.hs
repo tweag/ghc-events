@@ -170,30 +170,30 @@ buildEventInfo spec' =
     case spec' of
         EventBlock end_time cap _block_events ->
           "event block: cap " <> BB.intDec cap
-          <> ", end time: " <> BB.word64Dec end_time <> "\n"
+          <> ", end time: " <> builder end_time <> "\n"
         CreateThread thread ->
-          "creating thread " <> BB.word32Dec thread
+          "creating thread " <> builder thread
         RunThread thread ->
-          "running thread " <> BB.word32Dec thread
+          "running thread " <> builder thread
         StopThread thread status ->
-          "stopping thread " <> BB.word32Dec thread
+          "stopping thread " <> builder thread
           <> " (" <> BB.stringUtf8 (showThreadStopStatus status) <> ")"
         ThreadRunnable thread ->
-          "thread " <> BB.word32Dec thread <> " is runnable"
+          "thread " <> builder thread <> " is runnable"
         MigrateThread thread newCap  ->
-          "migrating thread " <> BB.word32Dec thread
+          "migrating thread " <> builder thread
           <> " to cap " <> BB.intDec newCap
         CreateSparkThread sparkThread ->
-          "creating spark thread " <> BB.word32Dec sparkThread
+          "creating spark thread " <> builder sparkThread
         SparkCounters crt dud ovf cnv fiz gcd rem ->
           "spark stats: "
-          <> BB.word64Dec crt <> " created, "
-          <> BB.word64Dec cnv <> " converted, "
-          <> BB.word64Dec rem <> " remaining ("
-          <> BB.word64Dec ovf <> " overflowed, "
-          <> BB.word64Dec dud <> " dud, "
-          <> BB.word64Dec gcd <> " GC'd, "
-          <> BB.word64Dec fiz <> " fizzled)"
+          <> builder crt <> " created, "
+          <> builder cnv <> " converted, "
+          <> builder rem <> " remaining ("
+          <> builder ovf <> " overflowed, "
+          <> builder dud <> " dud, "
+          <> builder gcd <> " GC'd, "
+          <> builder fiz <> " fizzled)"
         SparkCreate ->
           "spark created"
         SparkDud ->
@@ -208,21 +208,21 @@ buildEventInfo spec' =
           "spark fizzled"
         SparkGC ->
           "spark GCed"
-        TaskCreate taskId cap tid ->
+        TaskCreate (TaskId taskId) cap tid ->
           "task 0x" <> BB.word64Hex taskId
           <> " created on cap " <> BB.intDec cap
-          <>" with OS kernel thread " <> BB.word64Dec (kernelThreadId tid)
-        TaskMigrate taskId cap new_cap ->
+          <>" with OS kernel thread " <> builder (kernelThreadId tid)
+        TaskMigrate (TaskId taskId) cap new_cap ->
           "task 0x" <> BB.word64Hex taskId
           <> " migrated from cap " <> BB.intDec cap
           <> " to cap " <> BB.intDec new_cap
-        TaskDelete taskId ->
+        TaskDelete (TaskId taskId) ->
           "task 0x" <> BB.word64Hex taskId <> " deleted"
         WakeupThread thread otherCap ->
-          "waking up thread " <> BB.word32Dec thread
+          "waking up thread " <> builder thread
           <> " on cap " <> BB.intDec otherCap
         ThreadLabel thread label ->
-          "thread " <> BB.word32Dec thread
+          "thread " <> builder thread
           <> " has label \"" <> BB.stringUtf8 label <> "\""
         RequestSeqGC ->
           "requesting sequential GC"
@@ -241,30 +241,30 @@ buildEventInfo spec' =
         GlobalSyncGC ->
           "all caps stopped for GC"
         GCStatsGHC{..} ->
-          "GC stats for heap capset " <> BB.word32Dec heapCapset
+          "GC stats for heap capset " <> builder heapCapset
           <> ": generation " <> BB.intDec gen <> ", "
-          <> BB.word64Dec copied <> " bytes copied, "
-          <> BB.word64Dec slop <> " bytes slop, "
-          <> BB.word64Dec frag <> " bytes fragmentation, "
+          <> builder copied <> " bytes copied, "
+          <> builder slop <> " bytes slop, "
+          <> builder frag <> " bytes fragmentation, "
           <> BB.intDec parNThreads <> " par threads, "
-          <> BB.word64Dec parMaxCopied <> " bytes max par copied, "
-          <> BB.word64Dec parTotCopied <> " bytes total par copied"
+          <> builder parMaxCopied <> " bytes max par copied, "
+          <> builder parTotCopied <> " bytes total par copied"
         HeapAllocated{..} ->
-          "allocated on heap capset " <> BB.word32Dec heapCapset
-          <> ": " <> BB.word64Dec allocBytes <> " total bytes till now"
+          "allocated on heap capset " <> builder heapCapset
+          <> ": " <> builder allocBytes <> " total bytes till now"
         HeapSize{..} ->
-          "size of heap capset " <> BB.word32Dec heapCapset
-          <> ": " <> BB.word64Dec sizeBytes <> " bytes"
+          "size of heap capset " <> builder heapCapset
+          <> ": " <> builder sizeBytes <> " bytes"
         HeapLive{..} ->
-          "live data in heap capset " <> BB.word32Dec heapCapset
-          <> ": " <> BB.word64Dec liveBytes <> " bytes"
+          "live data in heap capset " <> builder heapCapset
+          <> ": " <> builder liveBytes <> " bytes"
         HeapInfoGHC{..} ->
-          "heap stats for heap capset " <> BB.word32Dec heapCapset
+          "heap stats for heap capset " <> builder heapCapset
           <> ": generations " <> BB.intDec gens <> ", "
-          <> BB.word64Dec maxHeapSize <> " bytes max heap size, "
-          <> BB.word64Dec allocAreaSize <> " bytes alloc area size, "
-          <> BB.word64Dec mblockSize <> " bytes mblock size, "
-          <> BB.word64Dec blockSize <> " bytes block size"
+          <> builder maxHeapSize <> " bytes max heap size, "
+          <> builder allocAreaSize <> " bytes alloc area size, "
+          <> builder mblockSize <> " bytes mblock size, "
+          <> builder blockSize <> " bytes block size"
         CapCreate{cap} ->
           "created cap " <> BB.intDec cap
         CapDelete{cap} ->
@@ -280,33 +280,33 @@ buildEventInfo spec' =
         UserMarker markername ->
           "marker: " <> BB.stringUtf8 markername
         CapsetCreate cs ct ->
-          "created capset " <> BB.word32Dec cs
+          "created capset " <> builder cs
           <> " of type " <> BB.stringUtf8 (show ct)
         CapsetDelete cs ->
-          "deleted capset " <> BB.word32Dec cs
+          "deleted capset " <> builder cs
         CapsetAssignCap cs cp ->
-          "assigned cap " <> BB.intDec cp <> " to capset " <> BB.word32Dec cs
+          "assigned cap " <> BB.intDec cp <> " to capset " <> builder cs
         CapsetRemoveCap cs cp ->
-          "removed cap " <> BB.intDec cp <> " from capset " <> BB.word32Dec cs
+          "removed cap " <> BB.intDec cp <> " from capset " <> builder cs
         OsProcessPid cs pid ->
-          "capset " <> BB.word32Dec cs <> ": pid " <> BB.word32Dec pid
+          "capset " <> builder cs <> ": pid " <> builder pid
         OsProcessParentPid cs ppid ->
-          "capset " <> BB.word32Dec cs <> ": parent pid " <> BB.word32Dec ppid
+          "capset " <> builder cs <> ": parent pid " <> builder ppid
         WallClockTime cs sec nsec ->
-          "capset " <> BB.word32Dec cs <> ": wall clock time "
-          <> BB.word64Dec sec <> "s "
-          <> BB.word32Dec nsec <> "ns (unix epoch)"
+          "capset " <> builder cs <> ": wall clock time "
+          <> builder sec <> "s "
+          <> builder nsec <> "ns (unix epoch)"
         RtsIdentifier cs i ->
-          "capset " <> BB.word32Dec cs
+          "capset " <> builder cs
           <> ": RTS version \"" <> BB.stringUtf8 i <> "\""
         ProgramArgs cs args ->
-          "capset " <> BB.word32Dec cs
+          "capset " <> builder cs
           <> ": args: " <> BB.stringUtf8 (show args)
         ProgramEnv cs env ->
-          "capset " <> BB.word32Dec cs
+          "capset " <> builder cs
           <> ": env: " <> BB.stringUtf8 (show env)
         UnknownEvent n ->
-          "Unknown event type " <> BB.word16Dec n
+          "Unknown event type " <> builder n
 
 showThreadStopStatus :: ThreadStopStatus -> String
 showThreadStopStatus NoStatus = "No stop thread status"
@@ -350,9 +350,9 @@ ppEventType = BL8.unpack . BB.toLazyByteString . buildEventType
 
 buildEventType :: EventType -> BB.Builder
 buildEventType (EventType num dsc msz) =
-  BB.word16Dec num <> ": "
-  <> BB.stringUtf8 dsc <> " (size "
-  <> maybe "variable" BB.word16Dec msz <> ")"
+  builder num <> ": "
+  <> builder dsc <> " (size "
+  <> maybe "variable" builder msz <> ")"
 
 -- | Pretty prints an 'Event', with clean handling for 'UnknownEvent'
 ppEvent :: IntMap EventType -> Event -> String
@@ -360,20 +360,20 @@ ppEvent imap = BL8.unpack . BB.toLazyByteString . buildEvent imap
 
 buildEvent :: IntMap EventType -> Event -> BB.Builder
 buildEvent imap Event {..} =
-  BB.word64Dec evTime
+  builder evTime
   <> ": "
   <> maybe "" (\c -> "cap " <> BB.intDec c <> ": ") evCap
   <> case evSpec of
     UnknownEvent{ ref=ref } ->
-      maybe "" (BB.stringUtf8 . desc) $ IM.lookup (fromIntegral ref) imap
+      maybe "" (builder . desc) $ IM.lookup (fromIntegral ref) imap
     _ -> buildEventInfo evSpec
 
 buildEvent' :: Event -> BB.Builder
 buildEvent' Event {..} =
-   BB.word64Dec evTime
+   builder evTime
    <> ": "
    <> maybe "" (\c -> "cap " <> BB.intDec c <> ": ") evCap
    <> case evSpec of
      UnknownEvent{ ref=ref } ->
-      "Unknown Event (ref: " <> BB.word16Dec ref <> ")"
+      "Unknown Event (ref: " <> builder ref <> ")"
      _ -> buildEventInfo evSpec
