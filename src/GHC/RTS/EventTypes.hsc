@@ -330,9 +330,8 @@ fromThreadStopStatus BlockedOnCCall_Interruptible = #const BlockedOnCCall_Interr
 fromThreadStopStatus BlockedOnMsgThrowTo = #const BlockedOnMsgThrowTo + 6
 fromThreadStopStatus ThreadMigrating = #const ThreadMigrating + 6
 
-maxThreadStopStatusPre77, maxThreadStopStatus :: RawThreadStopStatus
-maxThreadStopStatusPre77  = 18 -- see [Stop status in GHC-7.8.2]
-maxThreadStopStatus = 20
+maxThreadStopStatus :: RawThreadStopStatus
+maxThreadStopStatus  = 18
 
 data CapsetType
   = CapsetCustom
