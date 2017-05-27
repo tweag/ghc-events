@@ -362,8 +362,7 @@ post782StopParser =
                         status = case () of
                                   _ | s > maxThreadStopStatus
                                     -> NoStatus
-                                    | s == 8 {- XXX yeuch -}
-                                      -- post-7.8.2: 8==BlockedOnBlackhole
+                                    | s == fromThreadStopStatus BlockedOnBlackHole
                                     -> BlockedOnBlackHoleOwnedBy i
                                     | otherwise
                                     -> toThreadStopStatus s}
