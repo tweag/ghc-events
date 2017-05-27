@@ -159,27 +159,7 @@ mkEventDecoder :: Header -> G.Decoder (Maybe Event)
 mkEventDecoder header = G.runGetIncremental $ getEvent parsers
   where
     imap = IM.fromList [(fromIntegral (num t), t) | t <- eventTypes header]
-    -- GHC6 writes an invalid header, we handle it here by using a
-    -- different set of event parsers.  Note that the ghc7 event parsers
-    -- are standard events, and can be used by other runtime systems that
-    -- make use of threadscope.
-
-    -- GHC-7.8.2 uses a different thread block status encoding,
-    -- and therefore requires a different parser for the stop
-    -- event. Later, in GHC-7.8.3, the old encoding was restored.
-    -- GHC-7.8.2 can be recognised by presence and absence of
-    -- events in the header:
-    --   * User markers were added in GHC-7.8
-    --   * an empty event HACK_BUG_T9003 was added in GHC-7.8.3
-    -- This fix breaks software which uses ghc-events and combines
-    -- user markers with the older stop status encoding. We don't
-    -- know of any such software, though.
-    is_pre77 = IM.notMember EVENT_USER_MARKER imap
-
-    stopParsers
-      | is_pre77 = pre77StopParsers
-      | otherwise = [post782StopParser]
-
+    stopParsers = [post782StopParser]
     event_parsers = concat
         [ standardParsers
         , ghc7Parsers

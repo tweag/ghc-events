@@ -7,7 +7,6 @@ module GHC.RTS.Events.Binary
   , getEvent
   , standardParsers
   , ghc7Parsers
-  , pre77StopParsers
   , post782StopParser
 
   -- * Writers
@@ -348,39 +347,6 @@ ghc7Parsers = [
       return WakeupThread{thread=t,otherCap=fromIntegral oc}
    ))
  ]
-
--- parsers for GHC < 7.8.2. Older versions do not use block info
--- (different length).  See [Stop status in GHC-7.8.2] in
--- EventTypes.hs
-pre77StopParsers :: [EventParser EventInfo]
-pre77StopParsers = [
- (FixedSizeParser EVENT_STOP_THREAD (sz_tid + sz_th_stop_status) (do
-      -- (thread, status)
-      t <- get
-      s <- get :: Get RawThreadStopStatus
-      return StopThread{thread=t, status = if s > maxThreadStopStatusPre77
-                                              then NoStatus
-                                              else toThreadStopStatus s}
-                        -- older version of the event, no block info
-   )),
-
- (FixedSizeParser EVENT_STOP_THREAD (sz_tid + sz_th_stop_status + sz_tid)
-    (do
-      -- (thread, status, info)
-      t <- get
-      s <- get :: Get RawThreadStopStatus
-      i <- get :: Get ThreadId
-      return StopThread{thread = t,
-                        status = case () of
-                                  _ | s > maxThreadStopStatusPre77
-                                    -> NoStatus
-                                    | s == 8 {- XXX yeuch -}
-                                      -- pre-7.7: 8==BlockedOnBlackhole
-                                    -> BlockedOnBlackHoleOwnedBy i
-                                    | otherwise
-                                    -> toThreadStopStatus s}
-    ))
-  ]
 
 -- parsers for GHC >= 7.8.3, always using block info field parser.
 -- See [Stop status in GHC-7.8.2] in EventTypes.hs
