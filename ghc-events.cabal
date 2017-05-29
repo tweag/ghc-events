@@ -65,6 +65,15 @@ library
   other-extensions: FlexibleContexts, CPP
   ghc-options:      -Wall
 
+executable ghc-events
+  main-is:          app/Main.hs
+  build-depends:    base,
+                    bytestring,
+                    ghc-events,
+                    streaming,
+                    streaming-binary,
+                    streaming-bytestring
+
 test-suite test-versions
   type:             exitcode-stdio-1.0
   main-is:          TestVersions.hs
