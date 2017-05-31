@@ -92,7 +92,7 @@ hPrintEventsIncremental follow hdl = go decodeEventLog
         BB.hPutBuilder stdout $ buildEvent' event <> "\n"
         go decoder'
       Consume k -> do
-        chunk <- B.hGetSome hdl 4096
+        chunk <- B.hGetSome hdl 1024
         if
           | not (B.null chunk) -> go $ k chunk
           | follow -> threadDelay 1000000 >> go decoder
