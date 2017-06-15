@@ -72,24 +72,28 @@ import GHC.RTS.Events.Incremental
 readEventLogFromFile :: FilePath -> IO (Either String EventLog)
 readEventLogFromFile path = fmap fst . readEventLog <$> BL.readFile path
 
--- | Read an eventlog file and pretty print it to stdout
+-- | Read an eventlog file and pretty print it to the given output file.
 printEventsIncremental
   :: Bool -- ^ Follow the file or not
   -> FilePath
+  -> FilePath
   -> IO ()
-printEventsIncremental follow path =
-  withFile path ReadMode (hPrintEventsIncremental follow)
+printEventsIncremental follow path pathOut =
+  withFile path ReadMode $ \h ->
+  withFile pathOut WriteMode $ \hOut ->
+    (hPrintEventsIncremental follow h hOut)
 
--- | Read an eventlog from the Handle and pretty print it to stdout
+-- | Read an eventlog from the Handle and pretty print it to the given handle
 hPrintEventsIncremental
   :: Bool -- ^ Follow the handle or not
   -> Handle
+  -> Handle
   -> IO ()
-hPrintEventsIncremental follow hdl = go decodeEventLog
+hPrintEventsIncremental follow hdl hdlOut = go decodeEventLog
   where
     go decoder = case decoder of
       Produce event decoder' -> do
-        BB.hPutBuilder stdout $ buildEvent' event <> "\n"
+        BB.hPutBuilder hdlOut $ buildEvent' event <> "\n"
         go decoder'
       Consume k -> do
         chunk <- B.hGetSome hdl 1024
