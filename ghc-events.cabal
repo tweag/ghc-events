@@ -90,3 +90,16 @@ test-suite write-merge
   build-depends:    ghc-events, base, bytestring
   extensions:       RecordWildCards, NamedFieldPuns, BangPatterns, PatternGuards
   buildable:        False
+
+benchmark streaming
+  type:             exitcode-stdio-1.0
+  main-is:          benchmarks/streaming.hs
+  build-depends:    base,
+                    bytestring,
+                    directory,
+                    filepath,
+                    ghc-events,
+                    process,
+                    streaming,
+                    streaming-bytestring
+  ghc-options:      -Wall -rtsopts -eventlog -threaded
